@@ -1,3 +1,5 @@
+# taken from https://github.com/yassersouri/pytorch-deep-sets/
+
 from typing import Union
 
 import torch
@@ -95,12 +97,8 @@ class InvariantModelNoEmb(nn.Module):
     def forward(self, x: NetIO) -> NetIO:
         # compute the representation for each data point
         x = self.phi.forward(x)
-        # sum up the representations
-        # here I have assumed that x is 2D and the each row is representation of an input, so the following operation
-        # will reduce the number of rows to 1, but it will keep the tensor as a 2D tensor.
-        x = torch.sum(x)
+        return torch.sum(x)
 
-        return x
 
 
 if __name__ == "__main__":

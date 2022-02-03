@@ -41,12 +41,14 @@ class MNISTSummation(Dataset):
 
         the_sum = 0
         images = []
+        targets = []
         for mi in mnist_items:
             img, target = self.mnist.__getitem__(mi)
             the_sum += target
             images.append(img)
+            targets.append(target)
 
-        return torch.stack(images, dim=0), torch.FloatTensor([the_sum])
+        return torch.stack(images, dim=0), torch.tensor(targets), torch.FloatTensor([the_sum])
 
 
 
