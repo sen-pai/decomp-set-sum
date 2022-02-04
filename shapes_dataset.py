@@ -13,7 +13,7 @@ from torch import FloatTensor
 from torch.utils.data.dataset import Dataset
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-
+import copy
 """
 2D Shapes Dataset:
 
@@ -48,11 +48,17 @@ def make_sure_unique(comb):
         return False
     return True
 
+
 val_per_comb = list([r for r in itertools.product(SHAPES, COLORS, COLORS)])
 val_per_comb = list(filter(make_sure_unique, val_per_comb))
 
-def ellipse(output_path: str = "ignore") -> Tuple[np.array, int]:
-    bg_color, fill_color = random.sample(COLORS, 2)
+
+def ellipse(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+    new_colors = copy.deepcopy(COLORS)
+    random.shuffle(new_colors)
+    bg_color, fill_color = random.sample(set(new_colors), 2)
+
+    # print(bg_color, fill_color)
     image = Image.new("RGB", IMAGE_SIZE, bg_color)
     draw = ImageDraw.Draw(image)
 
@@ -63,14 +69,18 @@ def ellipse(output_path: str = "ignore") -> Tuple[np.array, int]:
     if output_path != "ignore":
         image.save(output_path)
 
+    # print(('ellipse', bg_color, fill_color))
     val = val_per_comb.index(("ellipse", bg_color, fill_color))
 
-    return np.array(image), val
+    if channels_first:
+        return np.moveaxis(np.array(image), -1, 0), val
+    return np.array(image) , val
 
 
-def circle(output_path: str = "ignore") -> Tuple[np.array, int]:
-
-    bg_color, fill_color = random.sample(COLORS, 2)
+def circle(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+    new_colors = copy.deepcopy(COLORS)
+    random.shuffle(new_colors)
+    bg_color, fill_color = random.sample(new_colors, 2)
 
     image = Image.new("RGB", IMAGE_SIZE, bg_color)
     draw = ImageDraw.Draw(image)
@@ -80,13 +90,19 @@ def circle(output_path: str = "ignore") -> Tuple[np.array, int]:
     if output_path != "ignore":
         image.save(output_path)
 
+    # print(("circle", bg_color, fill_color))
     val = val_per_comb.index(("circle", bg_color, fill_color))
 
+    if channels_first:
+        return np.moveaxis(np.array(image), -1, 0), val
     return np.array(image), val
 
 
-def pentagon(output_path: str = "ignore") -> Tuple[np.array, int]:
-    bg_color, fill_color = random.sample(COLORS, 2)
+def pentagon(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+    new_colors = copy.deepcopy(COLORS)
+    random.shuffle(new_colors)
+    bg_color, fill_color = random.sample(new_colors, 2)
+
     image = Image.new("RGB", IMAGE_SIZE, bg_color)
     draw = ImageDraw.Draw(image)
 
@@ -94,13 +110,19 @@ def pentagon(output_path: str = "ignore") -> Tuple[np.array, int]:
     if output_path != "ignore":
         image.save(output_path)
 
+    # print(("pentagon", bg_color, fill_color))
     val = val_per_comb.index(("pentagon", bg_color, fill_color))
 
+    if channels_first:
+        return np.moveaxis(np.array(image), -1, 0), val
     return np.array(image), val
 
 
-def rectangle(output_path: str = "ignore") -> Tuple[np.array, int]:
-    bg_color, fill_color = random.sample(COLORS, 2)
+def rectangle(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+    new_colors = copy.deepcopy(COLORS)
+    random.shuffle(new_colors)
+    bg_color, fill_color = random.sample(new_colors, 2)
+
     image = Image.new("RGB", IMAGE_SIZE, bg_color)
     draw = ImageDraw.Draw(image)
 
@@ -108,43 +130,55 @@ def rectangle(output_path: str = "ignore") -> Tuple[np.array, int]:
     if output_path != "ignore":
         image.save(output_path)
 
+    # print(("rectangle", bg_color, fill_color))
     val = val_per_comb.index(("rectangle", bg_color, fill_color))
 
+    if channels_first:
+        return np.moveaxis(np.array(image), -1, 0), val
     return np.array(image), val
 
-SHAPES_TRANSFORM = Compose([ToTensor(), Normalize((0.1307,), (0.3081,))])
 
 
 
 class ShapesSummation(Dataset):
-    def __init__(self, min_len: int, max_len: int, dataset_len: int, transform: Compose = SHAPES_TRANSFORM):
+    def __init__(
+        self,
+        min_len: int,
+        max_len: int,
+        dataset_len: int,
+    ):
         self.min_len = min_len
         self.max_len = max_len
         self.dataset_len = dataset_len
-        self.transform = transform
 
-        items_len_range = np.arange(self.min_len, self.max_len + 1)
-        items_len = np.random.choice(items_len_range, size=self.dataset_len, replace=True)
-        
-        
+        self.items_len_range = list(range(self.min_len, self.max_len + 1))
+
+        self.shape_funcs = [ellipse, circle, pentagon, rectangle]
+
 
     def __len__(self) -> int:
         return self.dataset_len
 
-    def __getitem__(self, item: int) -> Tuple[FloatTensor,FloatTensor, FloatTensor]:
-        mnist_items = self.mnist_items[item]
+    def __getitem__(self, item: int) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
 
+        set_size = random.choice(self.items_len_range)
         the_sum = 0
         images = []
         targets = []
-        for mi in mnist_items:
-            img, target = self.mnist.__getitem__(mi)
+        for _ in range(set_size):
+            img, target = self.shape_funcs[random.randint(0,3)]()
+            img = torch.tensor(img)
+            img = img/255.0
             the_sum += target
             images.append(img)
             targets.append(target)
 
-        return torch.stack(images, dim=0), torch.tensor(targets), torch.FloatTensor([the_sum])
-
+        # print(targets)
+        return (
+            torch.stack(images, dim=0),
+            torch.tensor(targets),
+            torch.FloatTensor([the_sum]),
+        )
 
 
 if __name__ == "__main__":
@@ -154,4 +188,8 @@ if __name__ == "__main__":
     # print(circle("assets/circle.png"))
     # print(rectangle("assets/rectangle.png"))
 
-    print(val_per_comb)
+    # print(val_per_comb)
+
+    shapes = ShapesSummation(2, 10, 100)
+    stack, tar, su = shapes.__getitem__(0)
+    print(stack.shape)

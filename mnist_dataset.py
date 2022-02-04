@@ -54,4 +54,5 @@ class MNISTSummation(Dataset):
 
 if __name__ == "__main__":
     train_db = MNISTSummation(min_len=2, max_len=10, dataset_len=100000, train=True, transform=MNIST_TRANSFORM)
-    print(train_db.__getitem__(0))
+    a, b, c = train_db.__getitem__(0)
+    print(a.shape)
