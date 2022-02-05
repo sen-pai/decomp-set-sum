@@ -15,7 +15,8 @@
     ```
 
 * Curriculum helped a lot! Initially set len was 2-10 which resulted in okish sum loss ~44 after 50 epochs, reduced set len to 2-5 and sum loss reduced to ~11 MSE after only 30 epochs.
-Further because training is on a set, during test time the set size can be any large number (far greater than max during training (10))
+Further because training is on a set, during test time the set size can be any large number (far greater than max during training (10)). 
+My guess why this worked is because sum decomposition is not unique. Smaller sets have more descriptive info than a large set.
 
 
     ```
@@ -56,3 +57,16 @@ An oracle indicator function: sim(x,y), where
 ```
 ``similarity_loss = minimize (sim(x,y) * MSE(f(x), f(y)))``
 Here sim() is not trainable, only f() is trainable.
+
+I think indirectly I am creating a classification based loss
+when sim() -> -1 to 1 rather than -1 or 1, it will be better suited for real world tasks
+
+#### Free lunch?
+
+Because we have ``X = [x1 ,x2 .. xn]`` and we know ``y = sum of f(xi)``, can we predict a set ``Y = [f(x1), f(x2).. f(x_{n-1})]`` and then infer ``f(xn) = y - Sum of Y`` ?
+
+Maybe a loss based on this idea? but how would be know item based ``f(xn)`` true value? 
+
+Rather we play with sets? By reframing ``X = A + B`` and ``y = sum of f(A) + sum of f(B)``
+We predict ``f(a_i)`` and create a loss based on
+``MSE(sum of f(B), (y - sum of true f(A)))`` 

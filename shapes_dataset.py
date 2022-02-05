@@ -14,6 +14,7 @@ from torch.utils.data.dataset import Dataset
 from torchvision.transforms import Compose, ToTensor, Normalize
 
 import copy
+
 """
 2D Shapes Dataset:
 
@@ -53,7 +54,9 @@ val_per_comb = list([r for r in itertools.product(SHAPES, COLORS, COLORS)])
 val_per_comb = list(filter(make_sure_unique, val_per_comb))
 
 
-def ellipse(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+def ellipse(
+    output_path: str = "ignore", channels_first: bool = True
+) -> Tuple[np.array, int]:
     new_colors = copy.deepcopy(COLORS)
     random.shuffle(new_colors)
     bg_color, fill_color = random.sample(set(new_colors), 2)
@@ -74,10 +77,12 @@ def ellipse(output_path: str = "ignore", channels_first: bool = True) -> Tuple[n
 
     if channels_first:
         return np.moveaxis(np.array(image), -1, 0), val
-    return np.array(image) , val
+    return np.array(image), val
 
 
-def circle(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+def circle(
+    output_path: str = "ignore", channels_first: bool = True
+) -> Tuple[np.array, int]:
     new_colors = copy.deepcopy(COLORS)
     random.shuffle(new_colors)
     bg_color, fill_color = random.sample(new_colors, 2)
@@ -98,7 +103,9 @@ def circle(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np
     return np.array(image), val
 
 
-def pentagon(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+def pentagon(
+    output_path: str = "ignore", channels_first: bool = True
+) -> Tuple[np.array, int]:
     new_colors = copy.deepcopy(COLORS)
     random.shuffle(new_colors)
     bg_color, fill_color = random.sample(new_colors, 2)
@@ -118,7 +125,9 @@ def pentagon(output_path: str = "ignore", channels_first: bool = True) -> Tuple[
     return np.array(image), val
 
 
-def rectangle(output_path: str = "ignore", channels_first: bool = True) -> Tuple[np.array, int]:
+def rectangle(
+    output_path: str = "ignore", channels_first: bool = True
+) -> Tuple[np.array, int]:
     new_colors = copy.deepcopy(COLORS)
     random.shuffle(new_colors)
     bg_color, fill_color = random.sample(new_colors, 2)
@@ -138,8 +147,6 @@ def rectangle(output_path: str = "ignore", channels_first: bool = True) -> Tuple
     return np.array(image), val
 
 
-
-
 class ShapesSummation(Dataset):
     def __init__(
         self,
@@ -155,9 +162,14 @@ class ShapesSummation(Dataset):
 
         self.shape_funcs = [ellipse, circle, pentagon, rectangle]
 
-
     def __len__(self) -> int:
         return self.dataset_len
+
+    def torchify(self, x: np.array, norm: bool = True) -> torch.tensor:
+        x = torch.tensor(x)
+        if norm:
+            return x / 255.0
+        return x
 
     def __getitem__(self, item: int) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
 
@@ -166,14 +178,12 @@ class ShapesSummation(Dataset):
         images = []
         targets = []
         for _ in range(set_size):
-            img, target = self.shape_funcs[random.randint(0,3)]()
-            img = torch.tensor(img)
-            img = img/255.0
+            img, target = self.shape_funcs[random.randint(0, 3)]()
+            img = self.torchify(img)
             the_sum += target
             images.append(img)
             targets.append(target)
 
-        # print(targets)
         return (
             torch.stack(images, dim=0),
             torch.tensor(targets),
@@ -192,35 +202,26 @@ class VisualSimOracle(Dataset):
         self.dataset_len = dataset_len
         self.shape_funcs = [ellipse, circle, pentagon, rectangle]
 
-
     def __len__(self) -> int:
         return self.dataset_len
 
-    def torchify(self, x:np.array, norm:bool = True) -> torch.tensor:
+    def torchify(self, x: np.array, norm: bool = True) -> torch.tensor:
         x = torch.tensor(x)
         if norm:
-            return x/255.0
+            return x / 255.0
         return x
 
     def __getitem__(self, item: int) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
 
-        images = []
-        targets = []
-        x_img, x_target = self.shape_funcs[random.randint(0,3)]()
+        x_img, x_target = self.shape_funcs[random.randint(0, 3)]()
         x_img = self.torchify(x_img)
 
-        y_img, y_target = self.shape_funcs[random.randint(0,3)]()
+        y_img, y_target = self.shape_funcs[random.randint(0, 3)]()
         y_img = self.torchify(y_img)
 
         indicator = 1 if x_target == y_target else -1
-        
-        # print(targets)
-        return (
-            torch.stack(images, dim=0),
-            torch.tensor(targets),
-            torch.FloatTensor([the_sum]),
-        )
 
+        return x_img, y_img, indicator
 
 
 if __name__ == "__main__":
@@ -235,3 +236,9 @@ if __name__ == "__main__":
     shapes = ShapesSummation(2, 10, 100)
     stack, tar, su = shapes.__getitem__(0)
     print(stack.shape)
+
+
+    oracle = VisualSimOracle(100)
+    x, y, i = oracle.__getitem__(0)
+    print(x.shape, i)
+    
