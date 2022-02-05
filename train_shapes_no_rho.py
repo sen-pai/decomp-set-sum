@@ -57,8 +57,8 @@ def evaluate(model, test_db):
 
 lr = 1e-3
 wd = 5e-3
-train_db = ShapesSummation(min_len=2, max_len=10, dataset_len=10000)
-test_db = ShapesSummation(min_len=5, max_len=50, dataset_len=1000)
+train_db = ShapesSummation(min_len=2, max_len=5, dataset_len=10000)
+test_db = ShapesSummation(min_len=5, max_len=20, dataset_len=10)
 
 the_phi = SmallShapesCNN()
 
@@ -69,6 +69,6 @@ if torch.cuda.is_available():
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
 
-for epoch in range(10):
+for epoch in range(50):
     train_1_epoch(model, train_db, optimizer, epoch)
     evaluate(model, test_db)

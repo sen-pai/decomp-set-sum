@@ -181,6 +181,48 @@ class ShapesSummation(Dataset):
         )
 
 
+class VisualSimOracle(Dataset):
+    def __init__(
+        self,
+        dataset_len: int,
+    ):
+        """
+        Return a tuple of two random (x, y) and 1 if x = y, or -1 if x != y
+        """
+        self.dataset_len = dataset_len
+        self.shape_funcs = [ellipse, circle, pentagon, rectangle]
+
+
+    def __len__(self) -> int:
+        return self.dataset_len
+
+    def torchify(self, x:np.array, norm:bool = True) -> torch.tensor:
+        x = torch.tensor(x)
+        if norm:
+            return x/255.0
+        return x
+
+    def __getitem__(self, item: int) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
+
+        images = []
+        targets = []
+        x_img, x_target = self.shape_funcs[random.randint(0,3)]()
+        x_img = self.torchify(x_img)
+
+        y_img, y_target = self.shape_funcs[random.randint(0,3)]()
+        y_img = self.torchify(y_img)
+
+        indicator = 1 if x_target == y_target else -1
+        
+        # print(targets)
+        return (
+            torch.stack(images, dim=0),
+            torch.tensor(targets),
+            torch.FloatTensor([the_sum]),
+        )
+
+
+
 if __name__ == "__main__":
 
     # print(ellipse("assets/ellipse.png"))
@@ -188,7 +230,7 @@ if __name__ == "__main__":
     # print(circle("assets/circle.png"))
     # print(rectangle("assets/rectangle.png"))
 
-    # print(val_per_comb)
+    # print(list(zip(val_per_comb, list(range(len(val_per_comb))))))
 
     shapes = ShapesSummation(2, 10, 100)
     stack, tar, su = shapes.__getitem__(0)
