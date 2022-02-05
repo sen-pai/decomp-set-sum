@@ -195,11 +195,13 @@ class VisualSimOracle(Dataset):
     def __init__(
         self,
         dataset_len: int,
+        same_prob:float = 0.5
     ):
         """
         Return a tuple of two random (x, y) and 1 if x = y, or -1 if x != y
         """
         self.dataset_len = dataset_len
+        self.same_prob = same_prob
         self.shape_funcs = [ellipse, circle, pentagon, rectangle]
 
     def __len__(self) -> int:
@@ -216,8 +218,12 @@ class VisualSimOracle(Dataset):
         x_img, x_target = self.shape_funcs[random.randint(0, 3)]()
         x_img = self.torchify(x_img)
 
-        y_img, y_target = self.shape_funcs[random.randint(0, 3)]()
-        y_img = self.torchify(y_img)
+        if random.uniform(0, 1) >= self.same_prob:
+            y_img, y_target = self.shape_funcs[random.randint(0, 3)]()
+            y_img = self.torchify(y_img)
+        else:
+            y_img = copy.deepcopy(x_img)
+            y_target = copy.deepcopy(x_target)
 
         indicator = 1 if x_target == y_target else -1
 

@@ -69,9 +69,17 @@ Vis MSE = -590
 Original: [37, 44,  0, 11, 28, 42, 16, 28, 45, 16, 28, 34, 24, 14, 17]
 Predicted: [39.0, 49.8,  0.2,  8.1, 31.1, 53.2, 12.1, 31.1, 47.4, 12.1, 31.1, 34.5, 23.8, 10.5, 10.6]
 ```
-
+There is a very clear sim(x,y) = -1 imbalance over 1, 99% of the time we can expect -1. 
 Maybe MAE is a better loss rather than MSE for this?. 
 
+```
+MAE + 50% balance 
+Epoch = 5
+Sum MSE = 24
+Vis MAE = -1.18
+Original: [28, 17,  7,  9, 16, 15,  4,  9, 15,  2, 18, 21, 21, 47,  6, 14]
+Predicted: [28.5, 16.9,  7.0,  9.2, 16.7, 15.2,  3.3,  9.2, 15.2,  2.5, 18.4, 21.8, 21.8, 48.8,  6.1, 14.5]
+```
 
 
 #### Free lunch?

@@ -32,7 +32,9 @@ def train_vis_sim_oracle_1_epoch(model, oracle_dl, optimizer, epoch_num: int = 0
         model_x = model.phi(x)
         model_y = model.phi(y)
 
-        loss = F.mse_loss(model_x, model_y, reduction="none")
+        # loss = F.mse_loss(model_x, model_y, reduction="none")
+        loss = F.l1_loss(model_x, model_y, reduction="none")
+        
         loss = indicator * loss.view(-1)
         loss = loss.mean()
 
@@ -40,7 +42,7 @@ def train_vis_sim_oracle_1_epoch(model, oracle_dl, optimizer, epoch_num: int = 0
         optimizer.step()
         epoch_loss.append(loss.item())
 
-    print(f"{epoch_num}: oracle train_loss {np.sum(epoch_loss)/ len(oracle_dl)}")
+    print(f"{epoch_num}: oracle train_loss {np.sum(epoch_loss)/ (len(oracle_dl) * 5)}")
 
 
 def train_1_item(model, train_db, optimizer, item_number: int) -> float:
