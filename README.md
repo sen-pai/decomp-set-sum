@@ -61,6 +61,19 @@ Here sim() is not trainable, only f() is trainable.
 I think indirectly I am creating a classification based loss
 when sim() -> -1 to 1 rather than -1 or 1, it will be better suited for real world tasks
 
+Implemented in [this script](./train_shapes_vis_oracle.py). Acc just shot up! 
+```
+Epoch = 2
+Sum MSE = 70
+Vis MSE = -590
+Original: [37, 44,  0, 11, 28, 42, 16, 28, 45, 16, 28, 34, 24, 14, 17]
+Predicted: [39.0, 49.8,  0.2,  8.1, 31.1, 53.2, 12.1, 31.1, 47.4, 12.1, 31.1, 34.5, 23.8, 10.5, 10.6]
+```
+
+Maybe MAE is a better loss rather than MSE for this?. 
+
+
+
 #### Free lunch?
 
 Because we have ``X = [x1 ,x2 .. xn]`` and we know ``y = sum of f(xi)``, can we predict a set ``Y = [f(x1), f(x2).. f(x_{n-1})]`` and then infer ``f(xn) = y - Sum of Y`` ?

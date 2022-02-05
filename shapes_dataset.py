@@ -225,6 +225,7 @@ class VisualSimOracle(Dataset):
 
 
 if __name__ == "__main__":
+    from torch.utils.data import DataLoader
 
     # print(ellipse("assets/ellipse.png"))
     # print(pentagon("assets/pentagon.png"))
@@ -237,8 +238,10 @@ if __name__ == "__main__":
     stack, tar, su = shapes.__getitem__(0)
     print(stack.shape)
 
-
     oracle = VisualSimOracle(100)
     x, y, i = oracle.__getitem__(0)
-    print(x.shape, i)
-    
+    # print(x.shape, i)
+
+    oracle_dataloader = DataLoader(oracle, batch_size=5)
+    b_x, b_y, b_i = next(iter(oracle_dataloader))
+    print(b_i)
