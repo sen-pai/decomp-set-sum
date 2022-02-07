@@ -34,7 +34,7 @@ def train_vis_sim_oracle_1_epoch(model, oracle_dl, optimizer, epoch_num: int = 0
 
         # loss = F.mse_loss(model_x, model_y, reduction="none")
         loss = F.l1_loss(model_x, model_y, reduction="none")
-        
+
         loss = indicator * loss.view(-1)
         loss = loss.mean()
 

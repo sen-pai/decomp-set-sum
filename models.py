@@ -100,7 +100,6 @@ class SmallShapesCNN(nn.Module):
         self.fc1_drop = nn.Dropout2d()
         self.fc2 = nn.Linear(500, 50)
         self.fc3 = nn.Linear(50, 1)
-        
 
     def forward(self, x: NetIO) -> NetIO:
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
@@ -111,7 +110,7 @@ class SmallShapesCNN(nn.Module):
         x = self.fc1_drop(x)
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        
+
         return x
 
 
@@ -126,7 +125,6 @@ class InvariantModelNoEmb(nn.Module):
         return torch.sum(x)
 
 
-
 if __name__ == "__main__":
     from mnist_dataset import MNISTSummation
 
@@ -134,6 +132,7 @@ if __name__ == "__main__":
 
     inp, s = train_db.__getitem__(0)
     phi = SmallMNISTCNN()
-    a_model = InvariantModelNoEmb(phi = phi)
+    a_model = InvariantModelNoEmb(phi=phi)
 
     print(a_model(inp))
+    

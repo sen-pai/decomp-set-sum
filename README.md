@@ -91,3 +91,16 @@ Maybe a loss based on this idea? but how would be know item based ``f(xn)`` true
 Rather we play with sets? By reframing ``X = A + B`` and ``y = sum of f(A) + sum of f(B)``
 We predict ``f(a_i)`` and create a loss based on
 ``MSE(sum of f(B), (y - sum of true f(A)))`` 
+
+
+
+#### Small Farms are better
+
+* Small set lenght
+* small yield values 
+
+
+#### Main Questions:
+
+* Are there other tasks in remote sensing that preserve sum composition. 
+* Any datasets which are publically available for yield administrative zones?
