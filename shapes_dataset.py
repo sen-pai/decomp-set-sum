@@ -238,16 +238,16 @@ if __name__ == "__main__":
     # print(circle("assets/circle.png"))
     # print(rectangle("assets/rectangle.png"))
 
-    # print(list(zip(val_per_comb, list(range(len(val_per_comb))))))
+    print(list(zip(val_per_comb, list(range(len(val_per_comb))))))
 
-    shapes = ShapesSummation(2, 10, 100)
-    stack, tar, su = shapes.__getitem__(0)
-    print(stack.shape)
+    # shapes = ShapesSummation(2, 10, 100)
+    # stack, tar, su = shapes.__getitem__(0)
+    # print(stack.shape)
 
-    oracle = VisualSimOracle(100)
-    x, y, i = oracle.__getitem__(0)
-    # print(x.shape, i)
+    # oracle = VisualSimOracle(100)
+    # x, y, i = oracle.__getitem__(0)
+    # # print(x.shape, i)
 
-    oracle_dataloader = DataLoader(oracle, batch_size=5)
-    b_x, b_y, b_i = next(iter(oracle_dataloader))
-    print(b_i)
+    # oracle_dataloader = DataLoader(oracle, batch_size=5)
+    # b_x, b_y, b_i = next(iter(oracle_dataloader))
+    # print(b_i)

@@ -104,3 +104,37 @@ We predict ``f(a_i)`` and create a loss based on
 
 * Are there other tasks in remote sensing that preserve sum composition. 
 * Any datasets which are publically available for yield administrative zones?
+
+
+
+
+#### Vegetation Dryness
+
+##### Set def
+* closest points
+* random from train
+
+##### Test splits:
+* based on Area
+* based on Time
+
+#### Results
+
+* Train = 2015, 2016, 2017 and Test = 2018, 2019
+  ```
+  With Loss as MSE
+  Original: [132.0, 109.6,  56.0,  92.5, 214.4,  76.6, 109.0, 92.5, 287.0, 165.0,  85.0, 104.0,  92.5,  90.0, 104.5,  85.8,  85.8]
+  Predicted: [113.0, 103.4, 104.3, 108.2, 197.6, 101.0, 107.5, 115.0, 112.6,  96.2, 100.3,  92.0,  83.4,  84.5,107.3, 104.2, 104.2])
+  ```
+
+  ```
+  With Loss as L1
+  Original: [108.0,  89.5, 110.6, 122.0,  63.2,  81.0]
+  Predicted: [113.2,  96.5, 107.3,  86.3,  77.2,  74.8]
+  ```
+
+  [Original Paper](https://www.sciencedirect.com/science/article/pii/S003442572030167X) has RMSE = 25. 
+  We achieve RMSE of 21 with a simple 2 layer MLP, no normalization, no site info, no time info.
+  Original paper had a target **per** pixel, we just have the total sum
+
+Model is bad at the extreme points, as expected (Maybe Small Sets can help here ). 
