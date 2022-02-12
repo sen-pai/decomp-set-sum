@@ -11,6 +11,30 @@ from torch.utils.data.dataset import Dataset
 import copy
 
 
+TEST_SITES = [
+    "Tapo Canyon, Simi Valley",
+    "ASF Greer",
+    "PNF Cherry",
+    "PNF White Spar",
+    "CAF Truchas 1",
+    "CAF Truchas 2",
+    "GNF Lincoln Canyon",
+    "LNF Cosmic",
+    "LNF Mayhill",
+    "LNF Smokey Bear",
+    "DUCK CREEK",
+    "Lewis Canyon",
+    "Lucky Springs",
+    "McCoy Ridge",
+    "New Jungo",
+    "Palisade",
+    "Panter",
+    "RUTH",
+    "Warm Springs",
+    "Wells",
+]
+
+
 def cleanup_df(df: pd.DataFrame) -> pd.DataFrame:
     # print(df.columns)
     del df["Unnamed: 0"]
@@ -37,8 +61,33 @@ def train_test_split(
         test.drop(["date", "percent(t)"], axis=1, inplace=True)
 
         return train.to_numpy(), train_y, test.to_numpy(), test_y
+    
+    if type == "site":
 
+        train = cleaned_df.loc[~cleaned_df['site'].isin(TEST_SITES)]
+        test = cleaned_df.loc[cleaned_df['site'].isin(TEST_SITES)]
 
+        train_y = train["percent(t)"].to_numpy()
+        test_y = test["percent(t)"].to_numpy()
+
+        train.drop(["date", "percent(t)", "site"], axis=1, inplace=True)
+        test.drop(["date", "percent(t)", "site"], axis=1, inplace=True)
+
+        return train.to_numpy(), train_y, test.to_numpy(), test_y
+    
+    if type == "sy":
+
+        train = cleaned_df.loc[~cleaned_df['site'].isin(TEST_SITES) & (cleaned_df.date < 2018)]
+        test = cleaned_df.loc[cleaned_df['site'].isin(TEST_SITES) & (cleaned_df.date >= 2018)]
+
+        train_y = train["percent(t)"].to_numpy()
+        test_y = test["percent(t)"].to_numpy()
+
+        train.drop(["date", "percent(t)", "site"], axis=1, inplace=True)
+        test.drop(["date", "percent(t)", "site"], axis=1, inplace=True)
+
+        return train.to_numpy(), train_y, test.to_numpy(), test_y
+    
 class VegetationDryness(Dataset):
     def __init__(
         self,
@@ -47,7 +96,7 @@ class VegetationDryness(Dataset):
         dataset_path: str,
         split: str = "year",
         is_train: bool = True,
-        norm: bool = True
+        norm: bool = True,
     ):
         self.min_len = min_len
         self.max_len = max_len
@@ -69,13 +118,13 @@ class VegetationDryness(Dataset):
     def __getitem__(self, item: int) -> Tuple[FloatTensor, FloatTensor, FloatTensor]:
 
         set_size = random.choice(self.items_len_range)
-        elements_idx = np.random.randint(self.elements.shape[0], size= set_size)
+        elements_idx = np.random.randint(self.elements.shape[0], size=set_size)
         set_elements = self.elements[elements_idx, :]
 
         set_percents = self.percents[elements_idx]
         if self.norm:
-            set_percents = (set_percents - self.mean)/ self.std
-            
+            set_percents = (set_percents - self.mean) / self.std
+
         the_sum = np.sum(set_percents)
 
         return (
@@ -127,7 +176,7 @@ class VegetationDryness(Dataset):
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
 
-    shapes = VegetationDryness(2, 5, 'input_data.csv')
+    shapes = VegetationDryness(2, 5, "input_data.csv")
     stack, tar, su = shapes.__getitem__(0)
     print(stack.shape)
     print(tar)

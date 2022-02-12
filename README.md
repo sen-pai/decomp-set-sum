@@ -133,6 +133,13 @@ We predict ``f(a_i)`` and create a loss based on
   Predicted: [113.2,  96.5, 107.3,  86.3,  77.2,  74.8]
   ```
 
+* Train Test Split based on Site.
+  ```
+  RMSE = 23.07
+  Original: [ 99.6, 102.0,  63.0,  52.5,  72.6, 143.1, 108.0, 84.6,  99.3,  99.0, 101.3]
+  Predicted: [ 91.2, 102.1,  90.2,  81.9,  96.9, 111.2,  79.6, 102.3,  89.5, 100.0,  83.8]
+  ```
+
   [Original Paper](https://www.sciencedirect.com/science/article/pii/S003442572030167X) has RMSE = 25. 
   We achieve RMSE of 21 with a simple 2 layer MLP, no normalization, no site info, no time info.
   Original paper had a target **per** pixel, we just have the total sum
