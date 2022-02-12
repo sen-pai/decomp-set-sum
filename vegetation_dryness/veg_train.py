@@ -7,19 +7,22 @@ from tqdm import tqdm
 from vegetation_dataset import VegetationDryness
 from veg_models import InvariantModelNoEmb, MlpPhi
 
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
-def train_1_epoch(model, train_db, optimizer, epoch_num: int = 0):
+
+def train_1_epoch(model, train_db, optimizer, epoch_num: int = 0, loss_type="mse"):
     model.train()
 
     epoch_loss = []
     for i in tqdm(range(len(train_db))):
-        loss = train_1_item(model, train_db, optimizer, i)
+        loss = train_1_item(model, train_db, optimizer, i, loss_type)
         epoch_loss.append(loss)
 
     print(f"{epoch_num}: train_loss {np.sum(epoch_loss)/ len(train_db)}")
 
 
-def train_1_item(model, train_db, optimizer, item_number: int) -> float:
+def train_1_item(model, train_db, optimizer, item_number: int, loss_type: str) -> float:
     x, _, target = train_db.__getitem__(item_number)
 
     if torch.cuda.is_available():
@@ -27,9 +30,13 @@ def train_1_item(model, train_db, optimizer, item_number: int) -> float:
 
     optimizer.zero_grad()
     pred = model.forward(x)
-    # the_loss = F.mse_loss(pred, target, reduction='mean')
-    the_loss = F.l1_loss(pred, target)
 
+    if loss_type == "mse":
+        the_loss = F.mse_loss(pred, target, reduction="mean")
+    elif loss_type == "l1":
+        the_loss = F.l1_loss(pred, target)
+    else:
+        raise (ValueError)
     # print(the_loss, pred, target)
 
     the_loss.backward()
@@ -73,41 +80,51 @@ def full_eval_loss(model, full_test_db):
         losses.append(F.mse_loss(pred, t).item())
 
 
-lr = 1e-3
-wd = 5e-3
-std = 39
-mean = 104
-train_db = VegetationDryness(
-    min_len=2, max_len=5, dataset_path="input_data.csv", norm=False, split="sy"
-)
-test_db = VegetationDryness(
-    min_len=5,
-    max_len=20,
-    dataset_path="input_data.csv",
-    is_train=False,
-    norm=False,
-    split="sy",
-)
-full_test_db = VegetationDryness(
-    min_len=1,
-    max_len=1,
-    dataset_path="input_data.csv",
-    is_train=False,
-    norm=False,
-    split="sy",
-)
+@hydra.main(config_path="configs", config_name="base")
+def main(cfg: DictConfig) -> None:
+
+    lr = 1e-3
+    wd = 5e-3
+    std = 39
+    mean = 104
+
+    train_db = VegetationDryness(
+        min_len=2,
+        max_len=5,
+        dataset_path=cfg.data.path,
+        norm=cfg.data.norm,
+        split=cfg.data.split,
+    )
+    test_db = VegetationDryness(
+        min_len=10,
+        max_len=20,
+        dataset_path=cfg.data.path,
+        is_train=False,
+        norm=cfg.data.norm,
+        split=cfg.data.split,
+    )
+    full_test_db = VegetationDryness(
+        min_len=1,
+        max_len=1,
+        dataset_path=cfg.data.path,
+        is_train=False,
+        norm=cfg.data.norm,
+        split=cfg.data.split,
+    )
+
+    the_phi = MlpPhi()
+
+    model = InvariantModelNoEmb(phi=the_phi)
+    if torch.cuda.is_available():
+        model.cuda()
+
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+
+    for epoch in range(cfg.training.epochs):
+        train_1_epoch(model, train_db, optimizer, epoch, loss_type=cfg.training.loss)
+        evaluate(model, test_db)
+        full_eval_loss(model, full_test_db)
 
 
-the_phi = MlpPhi()
-
-model = InvariantModelNoEmb(phi=the_phi)
-if torch.cuda.is_available():
-    model.cuda()
-
-optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
-
-
-for epoch in range(50):
-    train_1_epoch(model, train_db, optimizer, epoch)
-    evaluate(model, test_db)
-    full_eval_loss(model, full_test_db)
+if __name__ == "__main__":
+    main()

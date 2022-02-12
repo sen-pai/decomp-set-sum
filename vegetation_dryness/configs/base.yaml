@@ -1,0 +1,14 @@
+data:
+  split: year
+  norm: False
+  path: "input_data.csv"
+
+training:
+  loss: l1
+  epochs: 50
+
+
+# Run/sweep directories
+hydra:
+  run:
+    dir: ./
