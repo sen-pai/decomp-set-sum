@@ -1,11 +1,25 @@
 import rasterio
 from rasterio.mask import mask
-# the polygon GeoJSON geometry
-geoms = [{'type': 'Polygon', 'coordinates': [[(250204.0, 141868.0), (250942.0, 141868.0), (250942.0, 141208.0), (250204.0, 141208.0), (250204.0, 141868.0)]]}]
+
+import fiona
+
+with fiona.open('french_yield/france-geojson/departements/02-aisne/departement-02-aisne.geojson') as shapefile:
+    geoms = [feature["geometry"] for feature in shapefile]
+
+
+print(geoms)
+# # the polygon GeoJSON geometry
+# with open('french_yield/france-geojson/departements/02-aisne/departement-02-aisne.geojson') as data_file:    
+#     geoms= json.load(data_file)
+
+print("geom loaded")
+
 # load the raster, mask it by the polygon and crop it
-with rasterio.open("test.tif") as src:
+with rasterio.open("ndvi.tif") as src:
     out_image, out_transform = mask(src, geoms, crop=True)
 out_meta = src.meta.copy()
+
+print("original tif loaded")
 
 # save the resulting raster  
 out_meta.update({"driver": "GTiff",
@@ -13,5 +27,5 @@ out_meta.update({"driver": "GTiff",
     "width": out_image.shape[2],
 "transform": out_transform})
 
-with rasterio.open("masked.tif", "w", **out_meta) as dest:
+with rasterio.open("aisne_ndvi_masked.tif", "w", **out_meta) as dest:
     dest.write(out_image)
