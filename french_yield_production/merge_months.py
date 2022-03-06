@@ -162,19 +162,3 @@ for dept in depts:
         with rasterio.open(merged_name, 'w', **merged_geo) as dest:
             for i, band in enumerate(month_tifs):
                 dest.write(band.read(1),i + 1 )
-
-
-
-
-# band2=rasterio.open("B02.jp2")
-# band3=rasterio.open("B03.jp2")
-# band4=rasterio.open("B04.jp2")
-
-# band2_geo = band2.profile
-# band2_geo.update({"count": 3})
-
-# with rasterio.open('rgb.tiff', 'w', **band2_geo) as dest:
-# # I rearanged the band order writting to 2→3→4 instead of 4→3→2
-#     dest.write(band2.read(1),1)
-#     dest.write(band3.read(1),2)
-#     dest.write(band4.read(1),3)

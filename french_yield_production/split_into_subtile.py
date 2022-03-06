@@ -8,7 +8,7 @@ from rasterio import windows
 
 
 depts = [
-    # "Ain",
+    "Ain",
     "Aisne",
     "Allier",
     "Alpes_de_Haute_Provence",
