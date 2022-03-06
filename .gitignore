@@ -1,5 +1,6 @@
 MNIST/
 *.tif
+french_dept_data/
 
 
 .hydra
