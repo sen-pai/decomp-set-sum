@@ -57,7 +57,7 @@ def train_1_item(model, train_db, optimizer, item_number: int) -> float:
 
 
 
-lr = 1e-2
+lr = 1e-3
 wd = 5e-3
 train_db = FrenchSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data")
 

@@ -69,6 +69,39 @@ class FrenchAEDataset(Dataset):
 
 
 
+class FrenchLSTMAEDataset(Dataset):
+    def __init__(self, file_paths: List, normalize: bool = True, width:int = 64):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        self.file_paths = file_paths
+        self.normalize = normalize
+        self.width = width
+
+    def __len__(self) -> int:
+        return len(self.file_paths)
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+
+        # shape (6, 64, 64) to (6, 4096)
+        x = torch.flatten(x, 1)
+        # print("x", x.shape)
+        return x
+
+    def __getitem__(self, index: int):
+        file_name = self.file_paths[index]
+
+        subtile = load_merged_subtile(file_name, self.width, self.width)
+        subtile = self.torchify(subtile)
+
+        return subtile, subtile
+
+
+
 if __name__ == "__main__":
     paths = []
     for dept in DEPTS:

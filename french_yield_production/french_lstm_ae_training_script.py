@@ -22,8 +22,8 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
-from french_ae_dataloader import FrenchAEDataset
-from ae_model import YieldVAE
+from french_ae_dataloader import FrenchLSTMAEDataset
+from french_lstm_model import RNNDecoder, RNNEncoder, Seq2SeqAttn
 
 from utils.constants import TrainDEPTS, TrainYEARS, ValDEPTS, ValYEARS
 
@@ -95,7 +95,7 @@ for dept in TrainDEPTS:
     for year in TrainYEARS:
         train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_64/*"))
 
-train_dataset = FrenchAEDataset(train_subtile_paths, normalize= True)
+train_dataset = FrenchLSTMAEDataset(train_subtile_paths, normalize= True)
 
 
 
@@ -104,7 +104,7 @@ for dept in ValDEPTS:
     for year in ValYEARS:
         val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_64/*"))
 
-valid_dataset = FrenchAEDataset(val_subtile_paths, normalize= True)
+valid_dataset = FrenchLSTMAEDataset(val_subtile_paths, normalize= True)
 
 dataloaders = {
     "train": DataLoader(
@@ -193,22 +193,27 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
                 count += 1
 
                 if count == 100:
-                    print(targets[0][0][0])
+                    print(targets[0][0])
                 # if phase == "train":
                 input_targets, targets, = (
                     input_targets.to(device),
                     targets.to(device),
                 )
-                # else:
-                #     input_targets = input_targets.to(device)
+
+                # print(input_targets.shape)
 
                 # track history if only in train
                 with torch.set_grad_enabled(phase == "train"):
                     optimizer.zero_grad()
-                    predictions, mu, var = model(input_targets)
-                    predictions, mu, var = predictions.to(device), mu.to(device), var.to(device)
+                    # predictions, mu, var = model(input_targets)
+
+                    predictions, all_attn = model(
+                        input_targets, encoder_lens=torch.tensor([6]*args.batch), decoder_lens=torch.tensor([6]*args.batch)
+                    )
+
+                    predictions = predictions.to(device)
                     if count % 100 == 0:
-                        print(predictions[0][0][0])
+                        print(predictions[0][0])
                     # if phase == "val":
                     #     predictions = predictions.to("cpu")
 
@@ -254,7 +259,20 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
 
 device = torch.device('cuda')
 
-model = YieldVAE().to(device)
+# model = YieldVAE().to(device)
+
+
+
+e = RNNEncoder(input_dim=4096, bidirectional=True)
+d = RNNDecoder(
+    input_dim=(e.input_size + e.hidden_size * 2),
+    hidden_size=e.hidden_size,
+    bidirectional=True,
+    output_dim= e.input_size,
+)
+
+model = Seq2SeqAttn(encoder=e, decoder=d).to(device)
+
 
 # all parameters are being optimized
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
