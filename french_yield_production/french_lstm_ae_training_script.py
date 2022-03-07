@@ -120,17 +120,17 @@ dataloaders = {
 }
 
 
-# experiments_path = os.path.join(current_dir, "experiments")
-# exp_name_path = os.path.join(experiments_path, exp_name)
-# os.chdir(experiments_path)
+experiments_path = os.path.join(current_dir, "experiments")
+exp_name_path = os.path.join(experiments_path, args.exp_name)
+os.chdir(experiments_path)
 
-# if os.path.exists(exp_name):
-#     shutil.rmtree(exp_name)
+if os.path.exists(args.exp_name):
+    shutil.rmtree(args.exp_name)
 
-# os.mkdir(exp_name)
-# os.chdir(exp_name)
-# os.mkdir("weights")
-# os.chdir(current_dir)
+os.mkdir(args.exp_name)
+os.chdir(args.exp_name)
+os.mkdir("weights")
+os.chdir(current_dir)
 
 
 def calc_loss(
@@ -249,13 +249,13 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
             end = time.time()
 
             # deep copy the model
-            # if phase == "val" and epoch % args.save_freq == 0:
-            #     print("saving model")
-            #     best_model_wts = copy.deepcopy(model.state_dict())
-            #     os.chdir(os.path.join(exp_name_path, "weights"))
-            #     weight_name = args.exp_name + "_weights_" + str(epoch) + ".pt"
-            #     torch.save(best_model_wts, weight_name)
-            #     os.chdir(current_dir)
+            if phase == "val" and epoch % args.save_freq == 0:
+                print("saving model")
+                best_model_wts = copy.deepcopy(model.state_dict())
+                os.chdir(os.path.join(exp_name_path, "weights"))
+                weight_name = args.exp_name + "_weights_" + str(epoch) + ".pt"
+                torch.save(best_model_wts, weight_name)
+                os.chdir(current_dir)
 
 device = torch.device('cuda')
 
