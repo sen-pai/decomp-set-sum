@@ -71,7 +71,7 @@ def most_similar(input_tif, model):
     _, h_main, _ = model.encoder.encode(input_tif.unsqueeze(0), torch.tensor([6]))
 
     h_main = h_main.view(1,-1).detach().cpu().numpy()
-
+    count = 0
     for input_targets, file_name in tqdm(dataloaders['train']):
         
         input_targets = input_targets.to(device)
@@ -81,10 +81,13 @@ def most_similar(input_tif, model):
 
         # print(cosine_similarity(h_main, h))
         # print(file_name)
-        # break
+        # brea
 
-        if cosine_similarity(h_main, h) > 0.95:
-            print(file_name)
+        if cosine_similarity(h_main, h) > 0.98:
+            # print(file_name)
+            count += 1 
+    print(count)
+
 
 
 
@@ -100,7 +103,7 @@ d = RNNDecoder(
 )
 
 model = Seq2SeqAttn(encoder=e, decoder=d).to(device)
-model.load_state_dict(torch.load('experiments/ae_32_lstm/weights/ae_32_lstm_weights_60.pt'))
+model.load_state_dict(torch.load('experiments/ae_32_lstm_no_empty/weights/ae_32_lstm_no_empty_weights_40.pt'))
 model.eval()  # Set model to evaluate mode
 
 input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002/split_Aisne_2002_32/subtile_32-32.tif')
