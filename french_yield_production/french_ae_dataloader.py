@@ -58,7 +58,7 @@ class FrenchAEDataset(Dataset):
         self.file_paths = file_paths
         self.normalize = normalize
         self.width = width
-        self.good_indices = [16619]
+        self.good_indices = [4]
 
     def __len__(self) -> int:
         return len(self.file_paths)
@@ -93,7 +93,7 @@ class FrenchLSTMAEDataset(Dataset):
         self.file_paths = file_paths
         self.normalize = normalize
         self.width = width
-        self.good_indices = [16619]
+        self.good_indices = [4]
 
     def __len__(self) -> int:
         return len(self.file_paths)
@@ -131,7 +131,7 @@ class FrenchLSTMAEDatasetCheck(Dataset):
         self.file_paths = file_paths
         self.normalize = normalize
         self.width = width
-        self.good_indices = [16619]
+        self.good_indices = [4]
 
     def __len__(self) -> int:
         return len(self.file_paths)

@@ -41,6 +41,17 @@ def load_merged_subtile(file_name: str, width: int, height: int) -> np.array:
     return subtile
 
 
+
+def check_many_zeros(array: np.array, width: int, height: int) -> bool:
+    uni, count = np.unique(array, return_counts=True)
+
+    if count[0] > 0.7 * width * height * 6:
+        # print(count[0])
+        return True
+    return False
+
+
+
 class FrenchSetYieldDataset(Dataset):
     def __init__(
         self,
@@ -78,8 +89,10 @@ class FrenchSetYieldDataset(Dataset):
         images = []
         for tif_path in self.flat_valid_dict[item][1]:
             img = load_merged_subtile(tif_path, self.width, self.width)
-            img = self.torchify(img)
-            images.append(img)
+
+            if not check_many_zeros(img, self.width, self.width):
+                img = self.torchify(img)
+                images.append(img)
 
         return (
             torch.stack(images, dim=0),
@@ -109,6 +122,7 @@ class FrenchLSTMSetYieldDataset(Dataset):
 
         self.normalize = normalize
         self.width = width
+        self.good_items = []
 
     def __len__(self) -> int:
         return self.num_valid
@@ -127,9 +141,27 @@ class FrenchLSTMSetYieldDataset(Dataset):
         images = []
         for tif_path in self.flat_valid_dict[item][1]:
             img = load_merged_subtile(tif_path, self.width, self.width)
-            img = self.torchify(img)
-            images.append(img)
+            if not check_many_zeros(img, self.width, self.width):
+                img = self.torchify(img)
+                images.append(img)
 
+            # img = self.torchify(img)
+            # images.append(img)
+
+        
+        if images:
+            self.good_items.append(item)
+        else:
+            item = random.choice(self.good_items)
+            the_sum = self.flat_valid_dict[item][0]
+            images = []
+            for tif_path in self.flat_valid_dict[item][1]:
+                img = load_merged_subtile(tif_path, self.width, self.width)
+                if not check_many_zeros(img, self.width, self.width):
+                    img = self.torchify(img)
+                    images.append(img)
+
+        
         return (
             torch.stack(images, dim=0),
             torch.tensor(the_sum),
