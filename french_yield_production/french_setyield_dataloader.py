@@ -87,6 +87,55 @@ class FrenchSetYieldDataset(Dataset):
         )
 
 
+
+
+class FrenchLSTMSetYieldDataset(Dataset):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        normalize: bool = True,
+        width: int = 64,
+    ):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv(csv_production_file_name, tif_path_origin, width)
+
+        self.normalize = normalize
+        self.width = width
+
+    def __len__(self) -> int:
+        return self.num_valid
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+        x = torch.flatten(x, 1)
+        return x
+
+
+    def __getitem__(self, item: int):
+
+        the_sum = self.flat_valid_dict[item][0]
+        images = []
+        for tif_path in self.flat_valid_dict[item][1]:
+            img = load_merged_subtile(tif_path, self.width, self.width)
+            img = self.torchify(img)
+            images.append(img)
+
+        return (
+            torch.stack(images, dim=0),
+            torch.tensor(the_sum),
+        )
+
+
 if __name__ == "__main__":
     from utils.valid_combinations import valid_combinations_from_csv
 
