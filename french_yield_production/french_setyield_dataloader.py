@@ -42,17 +42,28 @@ def load_merged_subtile(file_name: str, width: int, height: int) -> np.array:
 
 
 class FrenchSetYieldDataset(Dataset):
-    def __init__(self, csv_production_file_name: str, tif_path_origin: str, normalize: bool = True, width:int = 64):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        normalize: bool = True,
+        width: int = 64,
+    ):
         """
         Default format is channels first.
         width is expected to be the same as height
         """
-        self.paths_and_production_dict = valid_combinations_from_csv(csv_production_file_name, tif_path_origin)
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv(csv_production_file_name, tif_path_origin)
+
         self.normalize = normalize
         self.width = width
 
     def __len__(self) -> int:
-        return len(self.file_paths)
+        return self.num_valid
 
     def torchify(self, x: np.array) -> torch.tensor:
         x = torch.tensor(x).float()
@@ -60,17 +71,30 @@ class FrenchSetYieldDataset(Dataset):
             return x / 254.0
         return x
 
-    def __getitem__(self, index: int):
-        file_name = self.file_paths[index]
 
-        subtile = load_merged_subtile(file_name, self.width, self.width)
-        subtile = self.torchify(subtile)
+    def __getitem__(self, item: int):
 
-        return subtile, subtile
+        the_sum = self.flat_valid_dict[item][0]
+        images = []
+        for tif_path in self.flat_valid_dict[item][1]:
+            img = load_merged_subtile(tif_path, self.width, self.width)
+            img = self.torchify(img)
+            images.append(img)
 
+        return (
+            torch.stack(images, dim=0),
+            torch.tensor(the_sum),
+        )
 
 
 if __name__ == "__main__":
     from utils.valid_combinations import valid_combinations_from_csv
 
-    print(valid_combinations_from_csv('./winter_wheat_filtered_2002.csv', "../french_dept_data")['Ain'])
+    main_dict, flat_dict, num = valid_combinations_from_csv(
+        "./winter_wheat_filtered_2002.csv", "../french_dept_data"
+    )
+
+    shapes = FrenchSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data")
+    stack, su = shapes.__getitem__(0)
+    print(stack.shape)
+    print(su)
