@@ -51,13 +51,13 @@ parser.add_argument(
 parser.add_argument(
     "--batch",
     type=int,
-    default=64,
+    default=32,
     help="train batch size",
 )
 parser.add_argument(
     "--vbatch",
     type=int,
-    default=64,
+    default=32,
     help="validation batch size",
 )
 parser.add_argument(
@@ -86,25 +86,25 @@ torch.manual_seed(1)
 np.random.seed(1)
 random.seed(1)
 
-
+width_dim = 32
 
 current_dir = os.getcwd()
 
 train_subtile_paths = []
 for dept in TrainDEPTS:
     for year in TrainYEARS:
-        train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_64/*"))
+        train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
 
-train_dataset = FrenchLSTMAEDataset(train_subtile_paths, normalize= True)
+train_dataset = FrenchLSTMAEDataset(train_subtile_paths, normalize= False, width = width_dim)
 
 
 
 val_subtile_paths = []
 for dept in ValDEPTS:
     for year in ValYEARS:
-        val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_64/*"))
+        val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
 
-valid_dataset = FrenchLSTMAEDataset(val_subtile_paths, normalize= True)
+valid_dataset = FrenchLSTMAEDataset(val_subtile_paths, normalize= False, width = width_dim)
 
 dataloaders = {
     "train": DataLoader(
@@ -115,7 +115,7 @@ dataloaders = {
         drop_last=True,
     ),
     "val": DataLoader(
-        valid_dataset, batch_size=args.vbatch, shuffle=False, num_workers=0
+        valid_dataset, batch_size=args.vbatch, shuffle=False, num_workers=0, drop_last= True
     ),
 }
 
@@ -192,7 +192,7 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
             for input_targets, targets in tqdm(dataloaders[phase]):
                 count += 1
 
-                if count == 100:
+                if count % 100 == 0:
                     print(targets[0][0])
                 # if phase == "train":
                 input_targets, targets, = (
@@ -263,7 +263,7 @@ device = torch.device('cuda')
 
 
 
-e = RNNEncoder(input_dim=4096, bidirectional=True)
+e = RNNEncoder(input_dim=width_dim*width_dim, bidirectional=True)
 d = RNNDecoder(
     input_dim=(e.input_size + e.hidden_size * 2),
     hidden_size=e.hidden_size,

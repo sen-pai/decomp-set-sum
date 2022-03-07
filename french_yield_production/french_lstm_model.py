@@ -181,6 +181,7 @@ class RNNDecoder(BaseDecoder):
             nn.Linear(fin_h_size * 2, fin_mid_size),
             nn.ReLU(),
             nn.Linear(fin_mid_size, output_dim),
+            # nn.Sigmoid()
         )
 
     def single_step_deocde(self, prev_decode_output, encoder_outputs, h_i, c_i):
@@ -280,6 +281,7 @@ class RNNDecoderNoAttn(nn.Module):
             nn.Linear(fin_h_size, fin_mid_size),
             nn.ReLU(),
             nn.Linear(fin_mid_size, output_dim),
+            nn.Sigmoid()
         )
 
     def single_step_deocde(self, prev_decode_output, encoder_outputs, h_i, c_i):

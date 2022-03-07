@@ -7,7 +7,7 @@ from typing import Dict
 
 from .constants import DEPTS, YEARS
 
-def valid_combinations_from_csv(csv_file_name: str, tif_path_origin: str = None) -> Dict:
+def valid_combinations_from_csv(csv_file_name: str, tif_path_origin: str = None, split: int = 64) -> Dict:
     df = pd.read_csv(csv_file_name)
 
     comb_and_production = dict()
@@ -26,7 +26,7 @@ def valid_combinations_from_csv(csv_file_name: str, tif_path_origin: str = None)
     count = 0
     for dept in comb_and_production.keys():
         for valid_year in comb_and_production[dept].keys():
-            paths = glob.glob(f'{tif_path_origin}/{dept}/{valid_year}/split*_64/*.tif')
+            paths = glob.glob(f'{tif_path_origin}/{dept}/{valid_year}/split*_{split}/*.tif')
             comb_and_production[dept][valid_year].append(paths)
 
             flattened_comb_and_production[count] = comb_and_production[dept][valid_year]
