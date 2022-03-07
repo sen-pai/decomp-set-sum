@@ -72,6 +72,7 @@ def most_similar(input_tif, model):
 
     h_main = h_main.view(1,-1).detach().cpu().numpy()
     count = 0
+    names = []
     for input_targets, file_name in tqdm(dataloaders['train']):
         
         input_targets = input_targets.to(device)
@@ -83,10 +84,13 @@ def most_similar(input_tif, model):
         # print(file_name)
         # brea
 
-        if cosine_similarity(h_main, h) > 0.98:
+        if cosine_similarity(h_main, h) > 0.9:
             # print(file_name)
+            names.append(file_name)
             count += 1 
     print(count)
+    print(len(set(names)))
+    print(names)
 
 
 
@@ -106,7 +110,7 @@ model = Seq2SeqAttn(encoder=e, decoder=d).to(device)
 model.load_state_dict(torch.load('experiments/ae_32_lstm_no_empty/weights/ae_32_lstm_no_empty_weights_40.pt'))
 model.eval()  # Set model to evaluate mode
 
-input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002/split_Aisne_2002_32/subtile_32-32.tif')
+input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002/split_Aisne_2002_32/subtile_64-64.tif')
 
 print("main file", file_n)
 most_similar(input_tif, model)
