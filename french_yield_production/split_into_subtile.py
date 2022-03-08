@@ -148,7 +148,7 @@ for dept in depts:
     for year in years:
         dept_year_path = os.path.join(dataset_path, dept, year)
         merged_input_name = glob.glob(dept_year_path + "/merged*.tif")[0]
-        output_folder_name = f"split_{dept}_{year}_32"
+        output_folder_name = f"split_{dept}_{year}_16"
         output_folder_path = os.path.join(dept_year_path, output_folder_name)
         os.mkdir(output_folder_path)
 
@@ -156,7 +156,7 @@ for dept in depts:
 
 
         with rio.open(merged_input_name) as inds:
-            tile_width, tile_height = 32, 32
+            tile_width, tile_height = 16, 16
             meta = inds.meta.copy()
 
             for window, transform in get_tiles(inds, tile_width, tile_height):

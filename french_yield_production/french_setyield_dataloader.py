@@ -118,7 +118,7 @@ class FrenchLSTMSetYieldDataset(Dataset):
             self.paths_and_production_dict,
             self.flat_valid_dict,
             self.num_valid,
-        ) = valid_combinations_from_csv(csv_production_file_name, tif_path_origin, width)
+        ) = valid_combinations_from_csv(csv_production_file_name, tif_path_origin, split=  width)
 
         self.normalize = normalize
         self.width = width
@@ -172,10 +172,12 @@ if __name__ == "__main__":
     from utils.valid_combinations import valid_combinations_from_csv
 
     main_dict, flat_dict, num = valid_combinations_from_csv(
-        "./winter_wheat_filtered_2002.csv", "../french_dept_data"
+        "./winter_wheat_filtered_2002.csv", "../french_dept_data", 64
     )
 
-    shapes = FrenchSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data")
-    stack, su = shapes.__getitem__(0)
-    print(stack.shape)
-    print(su)
+    print(main_dict)
+
+    # shapes = FrenchSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data")
+    # stack, su = shapes.__getitem__(0)
+    # print(stack.shape)
+    # print(su)
