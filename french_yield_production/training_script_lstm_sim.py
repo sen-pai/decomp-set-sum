@@ -92,16 +92,13 @@ def train_1_item(model, train_db, optimizer, item_number: int) -> float:
 
 
 
-lr = 1e-3
+lr = 1e-2
 wd = 5e-3
 
-width_dim = 32
+width_dim = 16
 
 
 train_db = FrenchLSTMSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", width = width_dim)
-
-
-
 
 
 train_subtile_paths = []
@@ -111,7 +108,7 @@ for dept in DEPTS:
 
 sim_dataset =  FrenchSimHistDataset(train_subtile_paths, normalize= False, width = width_dim, similarity_func=wasserstein_severity)
 sim_dataloader = DataLoader(sim_dataset, batch_size=32)
-model = YieldRNNModel(input_dim=32*32, bidirectional=False)
+model = YieldRNNModel(input_dim=width_dim*width_dim, bidirectional=False)
 
 if torch.cuda.is_available():
     model.cuda()

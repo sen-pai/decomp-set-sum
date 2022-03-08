@@ -23,7 +23,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from scipy.stats import wasserstein_distance
 
-width_dim = 32
+width_dim = 16
 
 
 train_subtile_paths = []
@@ -65,13 +65,13 @@ def most_similar(input_tif):
     names = []
     for input_targets, file_name in tqdm(dataloaders['train']):
 
-        # print("cos sim", cosine_similarity(np.reshape(input_tif, (1, -1)), input_targets))
+        print("cos sim", cosine_similarity(np.reshape(input_tif, (1, -1)), input_targets))
         # print(input_tif.shape)
         # print(input_targets.shape)
 
         if input_targets.shape[1] == 253:
             break
-        # print("Wass ", wasserstein_distance(input_tif, input_targets.view(-1)))
+        print("Wass ", wasserstein_distance(input_tif, input_targets.view(-1)))
         # print(file_name)
         # brea
 
@@ -87,7 +87,7 @@ def most_similar(input_tif):
     print(len(set(names)))
 
 
-input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002/split_Aisne_2002_32/subtile_32-32.tif')
+input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002/split_Aisne_2002_16/subtile_32-16.tif')
 
 print("main file", file_n)
 most_similar(input_tif)

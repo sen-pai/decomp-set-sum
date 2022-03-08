@@ -210,9 +210,9 @@ class FrenchHistDataset(Dataset):
         else:
             self.good_indices.append(index)
 
-        subtile = self.torchify(subtile)
+        # subtile = self.torchify(subtile)
 
-        return subtile, bincount, file_name
+        return bincount, file_name
 
 
 
