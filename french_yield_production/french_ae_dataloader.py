@@ -205,13 +205,14 @@ class FrenchHistDataset(Dataset):
         subtile = load_merged_subtile(file_name, self.width, self.width)
         bincount = get_histogram(subtile)
 
-        # if check_many_zeros(subtile, self.width, self.width):
-        #     file_name = self.file_paths[random.choice(self.good_indices)]
-        # else:
-        #     self.good_indices.append(index)
+        if check_many_zeros(subtile, self.width, self.width):
+            file_name = self.file_paths[random.choice(self.good_indices)]
+        else:
+            self.good_indices.append(index)
 
+        subtile = self.torchify(subtile)
 
-        return bincount, file_name
+        return subtile, bincount, file_name
 
 
 if __name__ == "__main__":
