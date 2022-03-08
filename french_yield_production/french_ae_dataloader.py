@@ -47,7 +47,26 @@ def check_many_zeros(array: np.array, width: int, height: int) -> bool:
         return True
     return False
 
+def get_histogram(occurances: np.array, drop_zero: bool = True, normalize: bool = False):
+    # print("uni", np.unique(occurances))
+    uni, count = np.unique(occurances, return_counts=True)
+    zero_num = count[0] if uni[0] == 0 else 0
 
+
+    occurances = occurances.astype(int)
+    occurances = occurances.flatten()
+    total = occurances.shape[0]
+    # print(occurances.shape)
+    hist = np.bincount(occurances, minlength= 255)
+
+    if normalize:
+        hist = hist/(total - zero_num + 1e-6)
+    # print(hist.shape)
+    if drop_zero:
+        # print("reached")
+        hist = np.delete(hist, [0])
+    
+    return hist
 
 class FrenchAEDataset(Dataset):
     def __init__(self, file_paths: List, normalize: bool = True, width:int = 64):
@@ -162,6 +181,37 @@ class FrenchLSTMAEDatasetCheck(Dataset):
 
         return subtile, file_name
 
+
+
+
+class FrenchHistDataset(Dataset):
+    def __init__(self, file_paths: List, normalize: bool = False, width:int = 64):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        self.file_paths = file_paths
+        self.normalize = normalize
+        self.width = width
+        self.good_indices = [4]
+
+    def __len__(self) -> int:
+        return len(self.file_paths)
+
+    def __getitem__(self, index: int, file_name = None):
+        if not file_name:
+            file_name = self.file_paths[index]
+
+        subtile = load_merged_subtile(file_name, self.width, self.width)
+        bincount = get_histogram(subtile)
+
+        # if check_many_zeros(subtile, self.width, self.width):
+        #     file_name = self.file_paths[random.choice(self.good_indices)]
+        # else:
+        #     self.good_indices.append(index)
+
+
+        return bincount, file_name
 
 
 if __name__ == "__main__":
