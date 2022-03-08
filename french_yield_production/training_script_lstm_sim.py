@@ -5,11 +5,13 @@ from torch import optim
 from tqdm import tqdm
 
 from french_setyield_dataloader import FrenchLSTMSetYieldDataset
-from french_ae_dataloader import FrenchHistDataset
+from french_ae_dataloader import FrenchSimHistDataset
 from french_yield_models import YieldRNNModel
 from utils.constants import DEPTS, YEARS
 from utils.simiarlity_utils import wasserstein_severity
 
+
+from torch.utils.data import DataLoader
 import glob
 
 def train_1_epoch(model, train_db, optimizer, epoch_num: int = 0):
@@ -27,12 +29,14 @@ def train_1_epoch(model, train_db, optimizer, epoch_num: int = 0):
 def train_sim_1_epoch(model, oracle_dl, optimizer, epoch_num: int = 0):
     model.train()
     epoch_loss = []
-    for x, y in tqdm(oracle_dl):
-        x, y = x.cuda(), y.cuda(), indicator.cuda()
+    for x, y, indicator in tqdm(oracle_dl):
+        x, y, indicator = x.cuda(), y.cuda(), indicator.cuda()
+
+        # print(indicator)
 
         optimizer.zero_grad()
-        model_x = model.phi(x)
-        model_y = model.phi(y)
+        model_x = model(x, torch.tensor([6]*x.shape[0]))
+        model_y = model(y, torch.tensor([6]*x.shape[0]))
 
         # loss = F.mse_loss(model_x, model_y, reduction="none")
         loss = F.l1_loss(model_x, model_y, reduction="none")
@@ -90,12 +94,14 @@ def train_1_item(model, train_db, optimizer, item_number: int) -> float:
 
 lr = 1e-3
 wd = 5e-3
-train_db = FrenchLSTMSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", width = 32)
-
-
-
 
 width_dim = 32
+
+
+train_db = FrenchLSTMSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", width = width_dim)
+
+
+
 
 
 train_subtile_paths = []
@@ -103,8 +109,8 @@ for dept in DEPTS:
     for year in YEARS:
         train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
 
-sim_dataloader =  FrenchHistDataset(train_subtile_paths, normalize= False, width = width_dim)
-
+sim_dataset =  FrenchSimHistDataset(train_subtile_paths, normalize= False, width = width_dim, similarity_func=wasserstein_severity)
+sim_dataloader = DataLoader(sim_dataset, batch_size=32)
 model = YieldRNNModel(input_dim=32*32, bidirectional=False)
 
 if torch.cuda.is_available():
@@ -114,7 +120,6 @@ optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
 
 for epoch in range(50):
-    train_1_epoch(model, train_db, optimizer, epoch)
     # evaluate(model, test_db)
 
 
@@ -123,4 +128,5 @@ for epoch in range(50):
     # if epoch > 5:
     train_sim_1_epoch(model, sim_dataloader, optimizer, epoch)
 
+    train_1_epoch(model, train_db, optimizer, epoch)
     # evaluate(model, test_db)
