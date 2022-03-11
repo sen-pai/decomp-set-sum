@@ -52,9 +52,98 @@ class RNNEncoder(nn.Module):
         # c_n -> [1, batch size, hidden size]
 
         if self.bi:
-            h_n = h_n.view(1, self.batch_size, self.hidden_size*2)
-            c_n = c_n.view(1, self.batch_size, self.hidden_size*2)
-            
+            h_n = h_n.view(1, self.batch_size, self.hidden_size * 2)
+            c_n = c_n.view(1, self.batch_size, self.hidden_size * 2)
+
+        return encoder_outputs, h_n, c_n
+
+    def device(self) -> torch.device:
+        """Heuristic to determine which device this module is on."""
+        first_param = next(self.parameters())
+        return first_param.device
+
+
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
+class UnFlatten(nn.Module):
+    def forward(self, input, size=1024):
+        return input.view(input.size(0), size, 1, 1)
+
+class RNNCNNEncoder(nn.Module):
+    def __init__(
+        self,
+        input_dim=1024,
+        n_layers=1,
+        hidden_size=100,
+        encoder_dropout=0.0,
+        bidirectional=False,
+        image_channels=1,
+    ):
+        super(RNNCNNEncoder, self).__init__()
+
+        self.input_size = input_dim
+        self.hidden_size = hidden_size
+        self.layers = n_layers
+        self.dropout = encoder_dropout
+        self.bi = bidirectional
+        self.image_channels = image_channels
+
+        self.encoder_cnn = nn.Sequential(
+            nn.Conv2d(self.image_channels, 32, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2),
+            nn.ReLU(),
+            Flatten(),
+        )
+
+        self.encoder_rnn = nn.LSTM(
+            self.input_size,
+            self.hidden_size,
+            self.layers,
+            dropout=self.dropout,
+            bidirectional=self.bi,
+            batch_first=True,
+        )
+
+    def encode(self, inputs, input_lengths):
+        max_len = int(torch.max(input_lengths).item())
+
+        # print(inputs[:, 0, :, :].unsqueeze(1).shape)
+        cnn_features = []
+        for timestep in range(max_len):
+            cnn_features.append(self.encoder_cnn(inputs[:, timestep, :, :].unsqueeze(1)).unsqueeze(1))
+
+        print(cnn_features[0].shape)
+        cnn_features = torch.cat(cnn_features, 1)
+        print(cnn_features.shape)
+        packed_input = pack_padded_sequence(
+            cnn_features, input_lengths, enforce_sorted=False, batch_first=True
+        )
+
+        self.batch_size = inputs.size()[0]
+        # print(self.batch_size)
+
+        encoder_outputs, (h_n, c_n) = self.encoder_rnn(packed_input)
+        encoder_outputs, _ = pad_packed_sequence(
+            encoder_outputs, batch_first=True, total_length=max_len
+        )
+
+        print(encoder_outputs.shape)
+        # encoder_outputs -> [batch size, max seq lenght, hidden size]
+        # h_n -> [1, batch size, hidden size]
+        # c_n -> [1, batch size, hidden size]
+
+        if self.bi:
+            h_n = h_n.view(1, self.batch_size, self.hidden_size * 2)
+            c_n = c_n.view(1, self.batch_size, self.hidden_size * 2)
+
         return encoder_outputs, h_n, c_n
 
     def device(self) -> torch.device:
@@ -171,10 +260,10 @@ class RNNDecoder(BaseDecoder):
         )
 
         if self.bi:
-            self.attention = Attention(hidden_size*2)
+            self.attention = Attention(hidden_size * 2)
         else:
             self.attention = Attention(hidden_size)
-        
+
         fin_h_size = self.hidden_size * 2 if self.bi else self.hidden_size
         fin_mid_size = int(fin_h_size / 2)
         self.reconstruct_linear = nn.Sequential(
@@ -195,8 +284,8 @@ class RNNDecoder(BaseDecoder):
         # print("hi", h_i.shape)
 
         if self.bi:
-            h_i = h_i.view(1, self.batch_size, self.hidden_size*2)
-            c_i = c_i.view(1, self.batch_size, self.hidden_size*2)
+            h_i = h_i.view(1, self.batch_size, self.hidden_size * 2)
+            c_i = c_i.view(1, self.batch_size, self.hidden_size * 2)
 
         attention_weights = self.attention(h_i[-1], encoder_outputs)
 
@@ -208,9 +297,9 @@ class RNNDecoder(BaseDecoder):
         rnn_input = torch.cat([prev_decode_output, context], 2)
 
         if self.bi:
-            h_i = h_i.view(2*self.layers, -1, self.hidden_size)
-            c_i = c_i.view(2*self.layers, -1, self.hidden_size)
-        
+            h_i = h_i.view(2 * self.layers, -1, self.hidden_size)
+            c_i = c_i.view(2 * self.layers, -1, self.hidden_size)
+
         # print(self.input_size)
         # print(rnn_input.shape)
         output, (h_n, c_n) = self.reconstruct_rnn(rnn_input, (h_i, c_i))
@@ -220,7 +309,7 @@ class RNNDecoder(BaseDecoder):
         return output, h_n, c_n, attention_weights
 
     def decode(self, h_n, c_n, lens, encoder_outputs):
-        
+
         max_len = int(max(lens))
         # print(max_len)
         self.batch_size = encoder_outputs.size()[0]
@@ -229,7 +318,9 @@ class RNNDecoder(BaseDecoder):
         inp = self.dummy_decoder_input(batch_first=False)
         final_reconstructed = self.dummy_output(max_len, batch_first=False)
 
-        all_attn = torch.zeros(max_len, self.batch_size, max_encoder_seq_len).to(self.device())
+        all_attn = torch.zeros(max_len, self.batch_size, max_encoder_seq_len).to(
+            self.device()
+        )
         for i in range(max_len):
             rnn_output, h_n, c_n, attention_weights = self.single_step_deocde(
                 inp, encoder_outputs, h_n, c_n
@@ -241,6 +332,130 @@ class RNNDecoder(BaseDecoder):
             all_attn[i] = attention_weights.squeeze(1)
 
         return final_reconstructed.permute(1, 0, 2), all_attn
+
+
+class RNNCNNDecoder(BaseDecoder):
+    def __init__(
+        self,
+        input_dim,
+        output_dim=1,
+        n_layers=1,
+        hidden_size=100,
+        dropout=0.0,
+        bidirectional=False,
+        use_r_linear=True,  # adds a MLP after RNN predictions
+        image_channels = 6,
+    ):
+        super().__init__(
+            input_dim,
+            output_dim,
+            n_layers,
+            hidden_size,
+            dropout,
+            bidirectional,
+            use_r_linear,
+        )
+
+        self.image_channels = image_channels
+
+        self.reconstruct_rnn = nn.LSTM(
+            self.input_size,
+            self.output_dim if not self.use_r_linear else self.hidden_size,
+            self.layers,
+            dropout=self.dropout,
+            bidirectional=self.bi,
+            batch_first=False,
+        )
+
+        if self.bi:
+            self.attention = Attention(hidden_size * 2)
+        else:
+            self.attention = Attention(hidden_size)
+
+        fin_h_size = self.hidden_size * 2 if self.bi else self.hidden_size
+        fin_mid_size = int(fin_h_size / 2)
+
+        # print(fin_h_size)
+
+        self.reconstruct_cnn = nn.Sequential(
+            UnFlatten(),
+            nn.ConvTranspose2d(fin_h_size, 128, kernel_size=5, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=6, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, image_channels, kernel_size=6, stride=2),
+            # nn.Sigmoid(),
+        )
+
+        self.reconstruct_linear = nn.Sequential(
+            nn.Linear(fin_h_size * 2, fin_mid_size),
+            nn.ReLU(),
+            nn.Linear(fin_mid_size, output_dim),
+            # nn.Sigmoid()
+        )
+
+    def single_step_deocde(self, prev_decode_output, encoder_outputs, h_i, c_i):
+        # prev_decoder_output -> [1, batch size, 1]
+        # encoder_outputs -> [batch size, max seq len, hidden size]
+        # h_i -> [1, batch size, hidden size]
+        # attention_weights -> [batch size, 1, max seq len]
+
+        # print(prev_decode_output.shape)
+        # print("eo", encoder_outputs.shape)
+        # print("hi", h_i.shape)
+
+        if self.bi:
+            h_i = h_i.view(1, self.batch_size, self.hidden_size * 2)
+            c_i = c_i.view(1, self.batch_size, self.hidden_size * 2)
+
+        attention_weights = self.attention(h_i[-1], encoder_outputs)
+
+        # print(attention_weights.shape)
+        context = attention_weights.bmm(encoder_outputs)
+        # context -> [batch size, 1, hidden]
+        context = context.transpose(0, 1)
+
+        rnn_input = torch.cat([prev_decode_output, context], 2)
+
+        if self.bi:
+            h_i = h_i.view(2 * self.layers, -1, self.hidden_size)
+            c_i = c_i.view(2 * self.layers, -1, self.hidden_size)
+
+        # print(self.input_size)
+        # print(rnn_input.shape)
+        output, (h_n, c_n) = self.reconstruct_rnn(rnn_input, (h_i, c_i))
+
+        if self.use_r_linear:
+            output = self.reconstruct_cnn(torch.cat([output, context], 2))
+        return output, h_n, c_n, attention_weights
+
+    def decode(self, h_n, c_n, lens, encoder_outputs):
+
+        max_len = int(max(lens))
+        # print(max_len)
+        self.batch_size = encoder_outputs.size()[0]
+        max_encoder_seq_len = encoder_outputs.size()[1]
+
+        inp = self.dummy_decoder_input(batch_first=False)
+        final_reconstructed = self.dummy_output(max_len, batch_first=False)
+
+        all_attn = torch.zeros(max_len, self.batch_size, max_encoder_seq_len).to(
+            self.device()
+        )
+        for i in range(max_len):
+            rnn_output, h_n, c_n, attention_weights = self.single_step_deocde(
+                inp, encoder_outputs, h_n, c_n
+            )
+
+            final_reconstructed[i] = rnn_output
+            inp = rnn_output
+
+            all_attn[i] = attention_weights.squeeze(1)
+
+        return final_reconstructed.permute(1, 0, 2), all_attn
+
 
 
 
@@ -281,7 +496,7 @@ class RNNDecoderNoAttn(nn.Module):
             nn.Linear(fin_h_size, fin_mid_size),
             nn.ReLU(),
             nn.Linear(fin_mid_size, output_dim),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def single_step_deocde(self, prev_decode_output, encoder_outputs, h_i, c_i):
@@ -333,10 +548,9 @@ class Seq2SeqAttn(nn.Module):
             return output
 
 
-
 if __name__ == "__main__":
 
-    #testing stuff
+    # testing stuff
     from dataloader import ReverseDataset
     from data_utils import pad_collate
     from torch.utils.data import DataLoader
@@ -353,11 +567,14 @@ if __name__ == "__main__":
     )
 
     e = RNNEncoder(input_dim=1, bidirectional=True)
-    d= RNNDecoder(input_dim=(e.input_size + e.hidden_size*2), hidden_size= e.hidden_size, bidirectional=True)
+    d = RNNDecoder(
+        input_dim=(e.input_size + e.hidden_size * 2),
+        hidden_size=e.hidden_size,
+        bidirectional=True,
+    )
 
     # e = RNNEncoder(input_dim=1, bidirectional=False)
     # d= RNNDecoder(input_dim=(e.input_size + e.hidden_size), hidden_size= e.hidden_size, bidirectional=False)
-    
 
     for i, (x, y, lens) in enumerate(k_dataloader):
         out, h, c = e.encode(x, lens)

@@ -91,3 +91,7 @@ input_tif, file_n = train_dataset.__getitem__(0, '../french_dept_data/Aisne/2002
 
 print("main file", file_n)
 most_similar(input_tif)
+
+
+
+

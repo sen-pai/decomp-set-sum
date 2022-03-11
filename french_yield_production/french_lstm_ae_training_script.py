@@ -12,6 +12,8 @@ import argparse
 from tqdm import tqdm
 import time
 
+from joblib import Parallel, delayed
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -51,13 +53,13 @@ parser.add_argument(
 parser.add_argument(
     "--batch",
     type=int,
-    default=32,
+    default=1000,
     help="train batch size",
 )
 parser.add_argument(
     "--vbatch",
     type=int,
-    default=32,
+    default=1000,
     help="validation batch size",
 )
 parser.add_argument(
@@ -86,23 +88,36 @@ torch.manual_seed(1)
 np.random.seed(1)
 random.seed(1)
 
-width_dim = 32
+width_dim = 1
 
 current_dir = os.getcwd()
 
-train_subtile_paths = []
-for dept in TrainDEPTS:
-    for year in TrainYEARS:
-        train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
+# train_subtile_paths = []
+# for dept in TrainDEPTS:
+#     for year in TrainYEARS:
+#         train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
+
+def get_glob_paths(dept, year):
+    return glob.glob(f"../french_dept_data/{dept}/{year}/split*_1/*")
+
+def flatten(t):
+    return [item for sublist in t for item in sublist]
+
+train_subtile_paths = Parallel(n_jobs=8)(delayed(get_glob_paths)(dept, year) for year in TrainYEARS for dept in TrainDEPTS)
+train_subtile_paths = flatten(train_subtile_paths)
 
 train_dataset = FrenchLSTMAEDataset(train_subtile_paths, normalize= False, width = width_dim)
 
 
 
-val_subtile_paths = []
-for dept in ValDEPTS:
-    for year in ValYEARS:
-        val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
+# val_subtile_paths = []
+# for dept in ValDEPTS:
+#     for year in ValYEARS:
+#         val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
+
+
+val_subtile_paths = Parallel(n_jobs=8)(delayed(get_glob_paths)(dept, year) for year in ValYEARS for dept in ValDEPTS)
+val_subtile_paths = flatten(val_subtile_paths)
 
 valid_dataset = FrenchLSTMAEDataset(val_subtile_paths, normalize= False, width = width_dim)
 
@@ -194,6 +209,7 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
 
                 if count % 100 == 0:
                     print(targets[0][0])
+                    break
                 # if phase == "train":
                 input_targets, targets, = (
                     input_targets.to(device),

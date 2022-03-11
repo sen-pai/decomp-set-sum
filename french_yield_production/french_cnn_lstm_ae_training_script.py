@@ -12,6 +12,8 @@ import argparse
 from tqdm import tqdm
 import time
 
+from joblib import Parallel, delayed
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,7 +25,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
 from french_ae_dataloader import FrenchAEDataset
-from ae_model import YieldVAE
+from french_lstm_model import RNNCNNDecoder, RNNCNNEncoder, Seq2SeqAttn
 
 from utils.constants import TrainDEPTS, TrainYEARS, ValDEPTS, ValYEARS
 
@@ -51,13 +53,13 @@ parser.add_argument(
 parser.add_argument(
     "--batch",
     type=int,
-    default=64,
+    default=32,
     help="train batch size",
 )
 parser.add_argument(
     "--vbatch",
     type=int,
-    default=64,
+    default=32,
     help="validation batch size",
 )
 parser.add_argument(
@@ -86,25 +88,38 @@ torch.manual_seed(1)
 np.random.seed(1)
 random.seed(1)
 
-
+width_dim = 64
 
 current_dir = os.getcwd()
 
 train_subtile_paths = []
 for dept in TrainDEPTS:
     for year in TrainYEARS:
-        train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_16/*"))
+        train_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
 
-train_dataset = FrenchAEDataset(train_subtile_paths, normalize= True, width = 16)
+# def get_glob_paths(dept, year):
+#     return glob.glob(f"../french_dept_data/{dept}/{year}/split*_1/*")
+
+# def flatten(t):
+#     return [item for sublist in t for item in sublist]
+
+# train_subtile_paths = Parallel(n_jobs=8)(delayed(get_glob_paths)(dept, year) for year in TrainYEARS for dept in TrainDEPTS)
+# train_subtile_paths = flatten(train_subtile_paths)
+
+train_dataset = FrenchAEDataset(train_subtile_paths, normalize= False, width = width_dim)
 
 
 
 val_subtile_paths = []
 for dept in ValDEPTS:
     for year in ValYEARS:
-        val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_16/*"))
+        val_subtile_paths.extend(glob.glob(f"../french_dept_data/{dept}/{year}/split*_{width_dim}/*"))
 
-valid_dataset = FrenchAEDataset(val_subtile_paths, normalize= True, width = 16)
+
+# val_subtile_paths = Parallel(n_jobs=8)(delayed(get_glob_paths)(dept, year) for year in ValYEARS for dept in ValDEPTS)
+# val_subtile_paths = flatten(val_subtile_paths)
+
+valid_dataset = FrenchAEDataset(val_subtile_paths, normalize= False, width = width_dim)
 
 dataloaders = {
     "train": DataLoader(
@@ -115,22 +130,22 @@ dataloaders = {
         drop_last=True,
     ),
     "val": DataLoader(
-        valid_dataset, batch_size=args.vbatch, shuffle=False, num_workers=0
+        valid_dataset, batch_size=args.vbatch, shuffle=False, num_workers=0, drop_last= True
     ),
 }
 
 
-# experiments_path = os.path.join(current_dir, "experiments")
-# exp_name_path = os.path.join(experiments_path, exp_name)
-# os.chdir(experiments_path)
+experiments_path = os.path.join(current_dir, "experiments")
+exp_name_path = os.path.join(experiments_path, args.exp_name)
+os.chdir(experiments_path)
 
-# if os.path.exists(exp_name):
-#     shutil.rmtree(exp_name)
+if os.path.exists(args.exp_name):
+    shutil.rmtree(args.exp_name)
 
-# os.mkdir(exp_name)
-# os.chdir(exp_name)
-# os.mkdir("weights")
-# os.chdir(current_dir)
+os.mkdir(args.exp_name)
+os.chdir(args.exp_name)
+os.mkdir("weights")
+os.chdir(current_dir)
 
 
 def calc_loss(
@@ -193,23 +208,29 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
                 count += 1
                 print(input_targets.shape)
 
-                if count == 100:
-                    print(targets[0][0][0])
+                if count % 100 == 0:
+                    print(targets[0][0])
+                    break
                 # if phase == "train":
                 input_targets, targets, = (
                     input_targets.to(device),
                     targets.to(device),
                 )
-                # else:
-                #     input_targets = input_targets.to(device)
+
+                # print(input_targets.shape)
 
                 # track history if only in train
                 with torch.set_grad_enabled(phase == "train"):
                     optimizer.zero_grad()
-                    predictions, mu, var = model(input_targets)
-                    predictions, mu, var = predictions.to(device), mu.to(device), var.to(device)
+                    # predictions, mu, var = model(input_targets)
+
+                    predictions, all_attn = model(
+                        input_targets, encoder_lens=torch.tensor([6]*args.batch), decoder_lens=torch.tensor([6]*args.batch)
+                    )
+
+                    predictions = predictions.to(device)
                     if count % 100 == 0:
-                        print(predictions[0][0][0])
+                        print(predictions[0][0])
                     # if phase == "val":
                     #     predictions = predictions.to("cpu")
 
@@ -245,17 +266,31 @@ def train_model(model, optimizer, scheduler, num_epochs=151):
             end = time.time()
 
             # deep copy the model
-            # if phase == "val" and epoch % args.save_freq == 0:
-            #     print("saving model")
-            #     best_model_wts = copy.deepcopy(model.state_dict())
-            #     os.chdir(os.path.join(exp_name_path, "weights"))
-            #     weight_name = args.exp_name + "_weights_" + str(epoch) + ".pt"
-            #     torch.save(best_model_wts, weight_name)
-            #     os.chdir(current_dir)
+            if phase == "val" and epoch % args.save_freq == 0:
+                print("saving model")
+                best_model_wts = copy.deepcopy(model.state_dict())
+                os.chdir(os.path.join(exp_name_path, "weights"))
+                weight_name = args.exp_name + "_weights_" + str(epoch) + ".pt"
+                torch.save(best_model_wts, weight_name)
+                os.chdir(current_dir)
 
 device = torch.device('cuda')
 
-model = YieldVAE().to(device)
+# model = YieldVAE().to(device)
+
+
+
+e = RNNCNNEncoder(input_dim=1024, hidden_size=1024, bidirectional=False)
+d = RNNCNNDecoder(
+    input_dim= e.input_size ,
+    hidden_size=e.hidden_size,
+    bidirectional=False,
+    output_dim= e.input_size,
+    use_r_linear=False
+)
+
+model = Seq2SeqAttn(encoder=e, decoder=d).to(device)
+
 
 # all parameters are being optimized
 optimizer = optim.Adam(model.parameters(), lr=args.lr)

@@ -2,7 +2,7 @@ MNIST/
 *.tif
 french_dept_data/
 
-
+*.npy
 .hydra
 
 
