@@ -1,0 +1,96 @@
+import pandas as pd 
+import rasterio as rio
+import numpy as np
+
+import glob
+import copy
+
+
+from utils.constants import DEPTS, YEARS
+
+
+from scipy.spatial.distance import cdist
+from scipy.stats import pearsonr
+
+import shutil
+import os
+
+import pickle
+
+
+dataset_path = os.path.join(os.getcwd(), "../french_dept_data")
+
+
+def merge_two_areas(area_a, area_b):
+
+    super_group = dict()
+
+    merged_groups_b = []
+    merged_groups_a = []
+    count = 1
+    for i, group_a in enumerate(area_a):
+        if i not in merged_groups_a:
+            for j, group_b in enumerate(area_b):
+                if j not in merged_groups_b:
+                    # print(group_a, group_b)
+                    if pearsonr(area_a[group_a][0][0].reshape(-1), area_b[group_b][0][0].reshape(-1))[0] > 0.9:
+                        if cdist(area_a[group_a][0][0].reshape(1,-1), area_b[group_b][0][0].reshape(1,-1))[0] < 50:
+
+                            list_pixels = copy.deepcopy(area_a[group_a][0])
+                            list_pixels.extend(area_b[group_b][0])
+
+                            list_filenames = copy.deepcopy(area_a[group_a][1])
+                            list_filenames.extend(area_b[group_b][1])
+
+                            super_group[count] = [list_pixels, list_filenames]
+                            
+                            count += 1
+                            merged_groups_a.append(i)
+                            merged_groups_b.append(j)
+
+    print(f'These many common sub groups found: {len(merged_groups_a)}')
+
+    for i, group_a in enumerate(area_a):
+        if i not in merged_groups_a:
+            super_group[count] = area_a[group_a]
+            count += 1
+
+    for i, group_b in enumerate(area_b):
+        if i not in merged_groups_b:
+            super_group[count] = area_b[group_b]
+            count += 1
+
+    print(len(super_group.keys()))
+
+    return super_group
+
+
+for dept in DEPTS:
+    dept_year_areas = []
+    super_group_dept = []
+    for year in YEARS:
+        dept_year_path = os.path.join(dataset_path, dept, year)
+        output_folder_name = f"{dept}_{year}_groups"
+        output_folder_path = os.path.join(dept_year_path, output_folder_name)
+        output_filename = f'{dept}_{year}_groups.pkl'
+        dept_year_areas.append(os.path.join(output_folder_path, output_filename))
+    
+
+    with open(dept_year_areas[0], 'rb') as f:
+        super_group_dept = pickle.load(f)
+    
+    for i, areas in enumerate(dept_year_areas):
+        if i != 0:
+            with open(dept_year_areas[i], 'rb') as f:
+                to_merge_area = pickle.load(f)
+            # print("to merge len", len(to_merge_area.keys()))
+            # print(super_group_dept[1][0])
+            # print(to_merge_area[1][0][0])
+            
+            super_group_dept = merge_two_areas(super_group_dept, to_merge_area)
+    
+    dept_merged_name = f'{dept}_all_groups_merged.pkl'
+    with open(os.path.join(dataset_path, dept, dept_merged_name), 'wb') as f:
+            pickle.dump(super_group_dept, f)
+
+    print(f'done {dept}')
