@@ -20,6 +20,10 @@ from utils.constants import DEPTS, YEARS
 from utils.valid_combinations import valid_combinations_from_csv, valid_combinations_from_csv_pkl
 
 
+
+from scipy.spatial.distance import cdist
+from scipy.stats import pearsonr
+
 def nodata_to_zero(array: np.array, no_data: int) -> np.array:
     array = np.where(array != no_data, array, 0)
     return array
@@ -300,6 +304,80 @@ class FrenchLinearPickleDataset(Dataset):
 
 
 
+class FrenchSimLinearPickleDataset(Dataset):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        depts: List = DEPTS,
+        normalize: bool = True,
+        norm_sum: int = 1
+    ):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv_pkl(csv_production_file_name, tif_path_origin, depts)
+
+        self.normalize = normalize
+        self.norm_sum = norm_sum
+
+    def __len__(self) -> int:
+        return self.num_valid
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+        x = torch.flatten(x, 1)
+        return x
+
+    def similarity_func(self, a, b):
+        if pearsonr(a.reshape(-1), b.reshape(-1))[0] > 0.9:
+            if cdist(a.reshape(1,-1), b.reshape(1,-1))[0] < 50:
+                return 1
+        return -1
+
+    def __getitem__(self, item: int):
+
+        # print(self.flat_valid_dict[item][1])
+        with open(self.flat_valid_dict[item][1][0], 'rb') as f:
+            pkl_groups_a = pickle.load(f)
+
+        random_key = random.sample(list(range(self.num_valid)), 1)[0]
+        with open(self.flat_valid_dict[random_key][1][0], 'rb') as f:
+            pkl_groups_b = pickle.load(f)
+
+        a_key = random.sample(pkl_groups_a.keys(), 1)[0]
+        a = pkl_groups_a[a_key][0][0]
+
+        if random.random() > 0.5:
+            # pixels_a = pkl_groups_a[a_key][0]
+            b = pkl_groups_a[a_key][0][0]
+            # print(b)
+
+        else:
+            b = pkl_groups_b[random.sample(pkl_groups_b.keys(), 1)[0]][0][0]
+        
+        # print(a)
+        # print(b)
+
+        sim = self.similarity_func(a, b)
+
+        a = self.torchify(a)
+        b = self.torchify(b)
+        
+        return (
+            a.view(-1).float().cpu(),
+            b.view(-1).float().cpu(),
+            torch.tensor(sim).float().cpu()
+        )
+
+
 if __name__ == "__main__":
     from utils.valid_combinations import valid_combinations_from_csv
 
@@ -315,6 +393,14 @@ if __name__ == "__main__":
     # print(su)
 
     fpkl = FrenchPickleDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", ['Ain'], norm_sum = 100000)
+
+    p, c, s = fpkl.__getitem__(0)
+    print(p.shape)
+    print(c.shape)
+    print(s)
+
+
+    fpkl = FrenchSimLinearPickleDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", ['Ain'], norm_sum = 100000)
 
     p, c, s = fpkl.__getitem__(0)
     print(p.shape)

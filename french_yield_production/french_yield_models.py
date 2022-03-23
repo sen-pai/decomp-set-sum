@@ -38,11 +38,14 @@ class YieldLinearModel(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(6, 3),
             nn.Linear(3, 1),
+            # nn.Softplus()
             # nn.ReLU()
         )
         
     def forward(self, x, group_sizes):
         pred = self.encoder(x)
+
+        # print(pred)
         # print(pred.shape)
         area_yield = pred.view(-1) * group_sizes
         # print(area_yield)
