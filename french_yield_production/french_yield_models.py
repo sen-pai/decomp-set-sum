@@ -32,6 +32,23 @@ class YieldModel(nn.Module):
 
 
 
+class YieldLinearModel(nn.Module):
+    def __init__(self,):
+        super(YieldLinearModel, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(6, 3),
+            nn.Linear(3, 1),
+            # nn.ReLU()
+        )
+        
+    def forward(self, x, group_sizes):
+        pred = self.encoder(x)
+        # print(pred.shape)
+        area_yield = pred.view(-1) * group_sizes
+        # print(area_yield)
+        return torch.sum(area_yield)
+
+
 
 class YieldRNNModel(nn.Module):
     def __init__(
@@ -98,6 +115,81 @@ class YieldRNNModel(nn.Module):
         first_param = next(self.parameters())
         return first_param.device
 
+
+
+class YieldGroupsRNNModel(nn.Module):
+    def __init__(
+        self,
+        input_dim,
+        n_layers=1,
+        hidden_size=100,
+        encoder_dropout=0.0,
+        bidirectional=False,
+    ):
+        super(YieldGroupsRNNModel, self).__init__()
+
+        self.input_size = input_dim
+        self.hidden_size = hidden_size
+        self.layers = n_layers
+        self.dropout = encoder_dropout
+        self.bi = bidirectional
+
+        self.encoder_rnn = nn.LSTM(
+            self.input_size,
+            self.hidden_size,
+            self.layers,
+            dropout=self.dropout,
+            bidirectional=self.bi,
+            batch_first=True,
+        )
+
+        self.reconstruct_linear = nn.Sequential(
+            nn.Linear(100, 50),
+            # nn.ReLU(),
+            nn.Linear(50, 1),
+            # nn.Linear(25, 1),
+            # nn.Sigmoid()
+            # nn.ReLU()
+        )
+
+    def forward(self, inputs, input_lengths, group_sizes):
+        packed_input = pack_padded_sequence(
+            inputs, input_lengths, enforce_sorted=False, batch_first=True
+        )
+
+        self.batch_size = inputs.size()[0]
+        # print(self.batch_size)
+        # max_len = int(torch.max(input_lengths).item())
+
+        encoder_outputs, (h_n, c_n) = self.encoder_rnn(packed_input)
+        encoder_outputs, _ = pad_packed_sequence(
+            encoder_outputs, batch_first=True, total_length=6
+        )
+
+        # print(h_n.squeeze(0).shape)
+
+        reconstructed = self.reconstruct_linear(h_n.squeeze(0))
+        # reconstructed = torch.clamp(reconstructed, min = 0)
+        # print(reconstructed.shape)
+        # print("groupss ", group_sizes.shape)
+
+        area_yield = reconstructed.view(-1) * group_sizes
+
+        # print("areas ss", area_yield)
+        # encoder_outputs -> [batch size, max seq lenght, hidden size]
+        # h_n -> [1, batch size, hidden size]
+        # c_n -> [1, batch size, hidden size]
+
+        # if self.bi:
+        #     h_n = h_n.view(1, self.batch_size, self.hidden_size*2)
+        #     c_n = c_n.view(1, self.batch_size, self.hidden_size*2)
+            
+        return torch.sum(area_yield)
+
+    def device(self) -> torch.device:
+        """Heuristic to determine which device this module is on."""
+        first_param = next(self.parameters())
+        return first_param.device
 
 
 

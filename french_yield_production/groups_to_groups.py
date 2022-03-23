@@ -21,6 +21,52 @@ import pickle
 dataset_path = os.path.join(os.getcwd(), "../french_dept_data")
 
 
+# def merge_two_areas(area_a, area_b):
+
+#     super_group = dict()
+
+#     merged_groups_b = []
+#     merged_groups_a = []
+#     count = 1
+#     for i, group_a in enumerate(area_a):
+#         if i not in merged_groups_a:
+#             for j, group_b in enumerate(area_b):
+#                 if j not in merged_groups_b:
+#                     # print(group_a, group_b)
+#                     if pearsonr(area_a[group_a][0][0].reshape(-1), area_b[group_b][0][0].reshape(-1))[0] > 0.9:
+#                         if cdist(area_a[group_a][0][0].reshape(1,-1), area_b[group_b][0][0].reshape(1,-1))[0] < 50:
+
+#                             list_pixels = copy.deepcopy(area_a[group_a][0])
+#                             list_pixels.extend(area_b[group_b][0])
+
+#                             list_filenames = copy.deepcopy(area_a[group_a][1])
+#                             list_filenames.extend(area_b[group_b][1])
+
+#                             super_group[count] = [list_pixels, list_filenames]
+                            
+#                             count += 1
+#                             merged_groups_a.append(i)
+#                             merged_groups_b.append(j)
+
+#                             list_filenames = []
+#                             list_pixels = []
+
+#     print(f'These many common sub groups found: {len(merged_groups_a)}')
+
+#     for i, group_a in enumerate(area_a):
+#         if i not in merged_groups_a:
+#             super_group[count] = area_a[group_a]
+#             count += 1
+
+#     for i, group_b in enumerate(area_b):
+#         if i not in merged_groups_b:
+#             super_group[count] = area_b[group_b]
+#             count += 1
+
+#     print(len(super_group.keys()))
+
+#     return super_group
+
 def merge_two_areas(area_a, area_b):
 
     super_group = dict()
@@ -28,32 +74,58 @@ def merge_two_areas(area_a, area_b):
     merged_groups_b = []
     merged_groups_a = []
     count = 1
-    for i, group_a in enumerate(area_a):
-        if i not in merged_groups_a:
-            for j, group_b in enumerate(area_b):
-                if j not in merged_groups_b:
-                    # print(group_a, group_b)
-                    if pearsonr(area_a[group_a][0][0].reshape(-1), area_b[group_b][0][0].reshape(-1))[0] > 0.9:
-                        if cdist(area_a[group_a][0][0].reshape(1,-1), area_b[group_b][0][0].reshape(1,-1))[0] < 50:
+    # for i, group_a in enumerate(area_a):
+    #     if i not in merged_groups_a:
+    #         for j, group_b in enumerate(area_b):
+    #             if j not in merged_groups_b:
+    #                 # print(group_a, group_b)
+    #                 if pearsonr(area_a[group_a][0][0].reshape(-1), area_b[group_b][0][0].reshape(-1))[0] > 0.9:
+    #                     if cdist(area_a[group_a][0][0].reshape(1,-1), area_b[group_b][0][0].reshape(1,-1))[0] < 50:
 
-                            list_pixels = copy.deepcopy(area_a[group_a][0])
-                            list_pixels.extend(area_b[group_b][0])
+    #                         list_pixels = copy.deepcopy(area_a[group_a][0])
+    #                         list_pixels.extend(area_b[group_b][0])
 
-                            list_filenames = copy.deepcopy(area_a[group_a][1])
-                            list_filenames.extend(area_b[group_b][1])
+    #                         list_filenames = copy.deepcopy(area_a[group_a][1])
+    #                         list_filenames.extend(area_b[group_b][1])
 
-                            super_group[count] = [list_pixels, list_filenames]
+    #                         super_group[count] = [list_pixels, list_filenames]
                             
-                            count += 1
-                            merged_groups_a.append(i)
-                            merged_groups_b.append(j)
+    #                         count += 1
+    #                         merged_groups_a.append(i)
+    #                         merged_groups_b.append(j)
 
-    print(f'These many common sub groups found: {len(merged_groups_a)}')
+    #                         list_filenames = []
+    #                         list_pixels = []
+
 
     for i, group_a in enumerate(area_a):
-        if i not in merged_groups_a:
-            super_group[count] = area_a[group_a]
-            count += 1
+        sim_groups = []
+        for j, group_b in enumerate(area_b):
+            if j not in merged_groups_b:
+                if pearsonr(area_a[group_a][0][0].reshape(-1), area_b[group_b][0][0].reshape(-1))[0] > 0.9:
+                    if cdist(area_a[group_a][0][0].reshape(1,-1), area_b[group_b][0][0].reshape(1,-1))[0] < 50:
+                        
+                        merged_groups_b.append(j)
+                        sim_groups.append(group_b)
+                        # print(sim_groups)
+
+        list_pixels = copy.deepcopy(area_a[group_a][0])
+        list_filenames = copy.deepcopy(area_a[group_a][1])
+
+        for sim_key in sim_groups:
+            list_pixels.extend(area_b[sim_key][0])
+            list_filenames.extend(area_b[sim_key][1])
+
+        super_group[count] = [list_pixels, list_filenames]
+
+        count += 1
+
+    print(f'These many common sub groups found: {len(merged_groups_b)}')
+
+    # for i, group_a in enumerate(area_a):
+    #     if i not in merged_groups_a:
+    #         super_group[count] = area_a[group_a]
+    #         count += 1
 
     for i, group_b in enumerate(area_b):
         if i not in merged_groups_b:
@@ -94,3 +166,4 @@ for dept in DEPTS:
             pickle.dump(super_group_dept, f)
 
     print(f'done {dept}')
+    # break

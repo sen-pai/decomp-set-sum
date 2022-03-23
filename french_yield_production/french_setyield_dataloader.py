@@ -15,9 +15,9 @@ import rasterio
 import torch
 from torch.utils.data import Dataset
 
-
+import pickle
 from utils.constants import DEPTS, YEARS
-from utils.valid_combinations import valid_combinations_from_csv
+from utils.valid_combinations import valid_combinations_from_csv, valid_combinations_from_csv_pkl
 
 
 def nodata_to_zero(array: np.array, no_data: int) -> np.array:
@@ -168,6 +168,138 @@ class FrenchLSTMSetYieldDataset(Dataset):
         )
 
 
+
+
+class FrenchPickleDataset(Dataset):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        depts: List = DEPTS,
+        normalize: bool = True,
+        norm_sum: int = 1
+    ):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv_pkl(csv_production_file_name, tif_path_origin, depts)
+
+        self.normalize = normalize
+        self.norm_sum = norm_sum
+
+    def __len__(self) -> int:
+        return self.num_valid
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+        x = torch.flatten(x, 1)
+        return x
+
+
+    def __getitem__(self, item: int):
+
+        the_sum = self.flat_valid_dict[item][0] / self.norm_sum
+
+        the_sum = np.around(the_sum,3)
+        # the_sum /= self.norm_sum
+        # the_sum = round(the_sum, 3)
+        # print(the_sum)
+        
+        pixels = []
+        group_sizes = []
+
+        # print(self.flat_valid_dict[item][1])
+        with open(self.flat_valid_dict[item][1][0], 'rb') as f:
+            pkl_groups = pickle.load(f)
+
+        
+        for np_pixels, paths in pkl_groups.values():
+            group_sizes.append(len(paths))
+            # pixels.append(self.torchify(random.sample(np_pixels, 1)[0]))
+            pixels.append(self.torchify(np_pixels[0]))
+            
+            
+        
+        return (
+            torch.stack(pixels, dim=0),
+            torch.tensor(group_sizes),
+            torch.tensor(the_sum)
+        )
+
+
+
+class FrenchLinearPickleDataset(Dataset):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        depts: List = DEPTS,
+        normalize: bool = True,
+        norm_sum: int = 1
+    ):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv_pkl(csv_production_file_name, tif_path_origin, depts)
+
+        self.normalize = normalize
+        self.norm_sum = norm_sum
+
+    def __len__(self) -> int:
+        return self.num_valid
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+        x = torch.flatten(x, 1)
+        return x
+
+
+    def __getitem__(self, item: int):
+
+        the_sum = self.flat_valid_dict[item][0] / self.norm_sum
+
+        the_sum = np.around(the_sum,3)
+        # the_sum /= self.norm_sum
+        # the_sum = round(the_sum, 3)
+        # print(the_sum)
+        
+        pixels = []
+        group_sizes = []
+
+        # print(self.flat_valid_dict[item][1])
+        with open(self.flat_valid_dict[item][1][0], 'rb') as f:
+            pkl_groups = pickle.load(f)
+
+        
+        for np_pixels, paths in pkl_groups.values():
+            group_sizes.append(len(paths))
+            # pixels.append(self.torchify(random.sample(np_pixels, 1)[0]))
+            pixels.append(self.torchify(np_pixels[0]))
+            
+            
+        
+        return (
+            torch.stack(pixels, dim=0).view(-1, 6).float(),
+            torch.tensor(group_sizes),
+            torch.tensor(the_sum).float()
+        )
+
+
+
 if __name__ == "__main__":
     from utils.valid_combinations import valid_combinations_from_csv
 
@@ -175,9 +307,18 @@ if __name__ == "__main__":
         "./winter_wheat_filtered_2002.csv", "../french_dept_data", 64
     )
 
-    print(main_dict)
+    # print(main_dict)
 
     # shapes = FrenchSetYieldDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data")
     # stack, su = shapes.__getitem__(0)
     # print(stack.shape)
     # print(su)
+
+    fpkl = FrenchPickleDataset("./winter_wheat_filtered_2002.csv", "../french_dept_data", ['Ain'], norm_sum = 100000)
+
+    p, c, s = fpkl.__getitem__(0)
+    print(p.shape)
+    print(c.shape)
+    print(s)
+
+    # print((p.*c).shape)
