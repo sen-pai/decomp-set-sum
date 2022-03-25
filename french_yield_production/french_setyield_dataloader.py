@@ -303,6 +303,71 @@ class FrenchLinearPickleDataset(Dataset):
         )
 
 
+class FrenchLinearClusterPickleDataset(Dataset):
+    def __init__(
+        self,
+        csv_production_file_name: str,
+        tif_path_origin: str,
+        merged_pkl : str,
+        depts: List = DEPTS,
+        normalize: bool = True,
+        norm_sum: int = 1
+        
+    ):
+        """
+        Default format is channels first.
+        width is expected to be the same as height
+        """
+        (
+            self.paths_and_production_dict,
+            self.flat_valid_dict,
+            self.num_valid,
+        ) = valid_combinations_from_csv_pkl(csv_production_file_name, tif_path_origin, depts)
+
+        with open(merged_pkl, 'rb') as f:
+            self.pkl_groups = pickle.load(f)
+
+        self.normalize = normalize
+        self.norm_sum = norm_sum
+
+    def __len__(self) -> int:
+        return self.num_valid
+
+    def torchify(self, x: np.array) -> torch.tensor:
+        x = torch.tensor(x).float()
+        if self.normalize:
+            x =  x / 254.0
+        x = torch.flatten(x, 1)
+        return x
+
+
+    def __getitem__(self, item: int):
+
+        the_sum = self.flat_valid_dict[item][0] / self.norm_sum
+
+        the_sum = np.around(the_sum,3)
+        
+        pixels = []
+        group_sizes = []
+
+        # print(self.flat_valid_dict[item][1])
+        with open(self.flat_valid_dict[item][1][0], 'rb') as f:
+            pkl_groups = pickle.load(f)
+
+        
+        for np_pixels, paths in pkl_groups.values():
+            group_sizes.append(len(paths))
+            # pixels.append(self.torchify(random.sample(np_pixels, 1)[0]))
+            pixels.append(self.torchify(np_pixels[0]))
+            
+            
+        
+        return (
+            torch.stack(pixels, dim=0).view(-1, 6).float(),
+            torch.tensor(group_sizes),
+            torch.tensor(the_sum).float()
+        )
+
 
 class FrenchSimLinearPickleDataset(Dataset):
     def __init__(

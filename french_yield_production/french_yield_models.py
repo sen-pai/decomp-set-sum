@@ -53,6 +53,27 @@ class YieldLinearModel(nn.Module):
 
 
 
+
+class YieldLinearGrpModel(nn.Module):
+    def __init__(self,):
+        super(YieldLinearModel, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(1, 3),
+            nn.Linear(3, 1),
+            # nn.Softplus()
+            # nn.ReLU()
+        )
+        
+    def forward(self, x, group_sizes):
+        pred = self.encoder(x)
+
+        # print(pred)
+        # print(pred.shape)
+        area_yield = pred.view(-1) * group_sizes
+        # print(area_yield)
+        return torch.sum(area_yield)
+
+
 class YieldRNNModel(nn.Module):
     def __init__(
         self,
